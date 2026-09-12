@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "dotenv": "^17.4.2",
-    "groq-sdk": "^1.6.0",
-    "openai": "^7.15.0"
-  }
-}

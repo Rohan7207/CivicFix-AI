@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const notFoundHandler = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -24,6 +25,8 @@ app.get('/health', (req, res) => {
     message: 'Server is healthy',
   });
 });
+
+app.use('/api/auth', authRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

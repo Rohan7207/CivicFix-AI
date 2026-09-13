@@ -2,160 +2,76 @@
 
 ## 1. Overview
 
-CivicFix AI is an AI-powered civic issue intelligence platform designed to transform citizen complaints into structured civic information, consolidate reports that describe the same real-world issue, and assign an explainable priority to issues.
+CivicFix AI analyzes civic evidence, understands the reported issue, combines supporting evidence, and produces an explainable priority.
 
 **Member 3 responsibility:** AI development.
 
-The current AI foundation consists of:
-
-1. Complaint Analysis
-2. Issue Fusion
-3. Priority Engine
-
-The AI layer is developed separately from the frontend and backend. Backend/API integration is pending and is handled by the backend team.
+Backend/API integration is separate work.
 
 ## 2. Current AI Architecture
 
 ```text
-Citizen Complaint
-       |
-       v
-+----------------------+
-| Complaint Analysis   |
-+----------+-----------+
-           |
-           v
-   Structured Complaint
-           |
-           v
-+----------------------+
-| Issue Fusion         |
-+----------+-----------+
-           |
-           v
-      Master Issue
-           |
-           v
-+----------------------+
-| Priority Engine      |
-+----------+-----------+
-           |
-           v
-Priority Score
-+ Priority Level
-+ Explanation
+Photo + Location
+      ↓
+Image Analysis
+      ↓
+Optional Text / Voice Analysis
+      ↓
+Issue Fusion
+      ↓
+Evidence Analysis
+      ↓
+Priority Engine
+      ↓
+Master Issue + Priority
 ```
 
-### Component responsibilities
+## 3. Components
 
-| Component | Location | Purpose | Current status |
-|---|---|---|---|
-| Complaint Analysis | `ai/complaintAnalysis/` | Converts a complaint into structured civic information | Implemented and tested |
-| Issue Fusion | `ai/issueFusion/` | Determines whether multiple reports describe the same physical issue and creates a master issue | Implemented and tested |
-| Priority Engine | `ai/priorityEngine/` | Calculates a deterministic 0–100 priority score and explanation | Implemented; test available |
-| Evidence Engine | `ai/evidenceEngine/` | Additional evidence scoring | In development / not treated as completed |
-| Voice Analysis | `ai/voiceAnalysis/` | Voice-related processing | Not treated as completed |
-| AI orchestration | `ai/civicAI.js` | Coordinates AI components | Not treated as completed |
+| Component | Location | Status |
+|---|---|---|
+| Complaint Analysis | `ai/complaintAnalysis/` | Implemented and tested |
+| Image Analysis | `ai/imageAnalysis/` | Implemented and tested |
+| Voice Analysis | `ai/voiceAnalysis/` | Implemented and tested |
+| Issue Fusion | `ai/issueFusion/` | Implemented and tested |
+| Evidence Engine | `ai/evidenceEngine/` | Implemented and tested |
+| Priority Engine | `ai/priorityEngine/` | Implemented and tested |
+| AI Orchestration | `ai/civicAI.js` | Implemented and tested |
 
-## 3. AI Data Flow
+## 4. Input Rules
 
 ```text
-Raw Citizen Complaint
-        |
-        v
-Complaint Analysis
-        |
-        v
-Structured Complaint
-(category, severity, safety risk,
- confidence, department, summary, language)
-        |
-        v
-Issue Fusion
-        |
-        v
-Master Issue
-        |
-        v
-Priority Calculation
-        |
-        v
-Priority Score + Level + Explanation
+Photo       REQUIRED
+Location    REQUIRED
+Description OPTIONAL
+Voice       OPTIONAL
 ```
 
-The exact integration of these components with the backend is still pending.
-
-## 4. Technology Stack
-
-The current AI implementation uses:
-
-- JavaScript / Node.js
-- Groq SDK
-- Groq LLM
-- `dotenv` for environment configuration
-- JSON responses
-
-The Complaint Analysis and Issue Fusion components use the Groq API with the `openai/gpt-oss-120b` model in the current implementation.
-
-## 5. AI Folder Structure
-
-The AI layer is organized as separate components:
+## 5. Folder Structure
 
 ```text
 ai/
 ├── complaintAnalysis/
-├── issueFusion/
-├── priorityEngine/
-├── evidenceEngine/
+├── imageAnalysis/
 ├── voiceAnalysis/
+├── issueFusion/
+├── evidenceEngine/
+├── priorityEngine/
 └── civicAI.js
 ```
-
-Only the components confirmed as implemented should be treated as part of the completed AI workflow.
 
 ## 6. Documentation Navigation
 
 - [Complaint Analysis](./complaint-analysis.md)
+- [Image Analysis](./image-analysis.md)
+- [Voice Analysis](./voice-analysis.md)
 - [Issue Fusion](./issue-fusion.md)
+- [Evidence Analysis](./evidence-analysis.md)
 - [Priority Engine](./priority-engine.md)
+- [AI Orchestration](./ai-orchestration.md)
 
-## 7. Member 3 vs Other Team Responsibilities
+## 7. Current Status
 
-### AI — Member 3
+All listed AI components have been implemented and tested at the AI-side level.
 
-- Complaint understanding and classification
-- Issue Fusion
-- Priority calculation
-- AI-side testing and documentation
-
-### Backend team
-
-- Server
-- API routes
-- Database integration
-- Backend-to-AI integration
-
-### Frontend team
-
-- Citizen interface
-- Authority interface
-- User-facing UI
-
-## 8. Current Status
-
-### Completed / tested
-
-- Complaint Analysis
-- Multilingual complaint understanding in Complaint Analysis
-- Issue Fusion
-- Priority scoring logic
-
-### In development / pending
-
-- Evidence Engine
-- Voice/speech processing
-- Full AI orchestration
-- Backend integration
-- Production deployment
-
-This document intentionally does not represent unfinished features as completed.
+Backend integration and production deployment remain separate work.

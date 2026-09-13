@@ -8,11 +8,44 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role ENUM('citizen', 'department_admin', 'super_admin') NOT NULL DEFAULT 'citizen',
+  role ENUM('CITIZEN', 'ADMIN') NOT NULL DEFAULT 'CITIZEN',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS complaints (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  citizen_id BIGINT UNSIGNED NOT NULL,
+  description TEXT NULL,
+  latitude DECIMAL(9,6) NOT NULL,
+  longitude DECIMAL(9,6) NOT NULL,
+  address VARCHAR(255) NULL,
+  master_issue_id BIGINT UNSIGNED DEFAULT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'PENDING_AI_ANALYSIS',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_complaints_citizen_id (citizen_id),
+  KEY idx_complaints_status (status),
+  KEY idx_complaints_created_at (created_at),
+  CONSTRAINT fk_complaints_citizen FOREIGN KEY (citizen_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS complaint_evidence (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  complaint_id BIGINT UNSIGNED NOT NULL,
+  type ENUM('PHOTO','VOICE') NOT NULL,
+  imagekit_url VARCHAR(2048) NOT NULL,
+  imagekit_file_id VARCHAR(255) NOT NULL,
+  original_filename VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_complaint_evidence_complaint_id (complaint_id),
+  CONSTRAINT fk_complaint_evidence_complaint FOREIGN KEY (complaint_id) REFERENCES complaints (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS departments (
@@ -27,29 +60,6 @@ CREATE TABLE IF NOT EXISTS departments (
   UNIQUE KEY uq_departments_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS complaints (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  department_id BIGINT UNSIGNED DEFAULT NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  category VARCHAR(100) NOT NULL,
-  location VARCHAR(255) NOT NULL,
-  latitude DECIMAL(10,8) DEFAULT NULL,
-  longitude DECIMAL(11,8) DEFAULT NULL,
-  priority ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'medium',
-  status ENUM('submitted', 'under_review', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected') NOT NULL DEFAULT 'submitted',
-  source ENUM('web', 'mobile', 'phone', 'other') NOT NULL DEFAULT 'web',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  KEY idx_complaints_user_id (user_id),
-  KEY idx_complaints_department_id (department_id),
-  KEY idx_complaints_status (status),
-  KEY idx_complaints_created_at (created_at),
-  CONSTRAINT fk_complaints_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_complaints_department FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS master_issues (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

@@ -4,7 +4,7 @@
     full_name: "Test User",
     email: "test@example.com",
     password: "Password123",
-    role: "citizen",
+    role: "CITIZEN",
   };
 
   function log(msg, obj) {

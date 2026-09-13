@@ -11,7 +11,7 @@ test("validateRegistration rejects invalid full name", () => {
     full_name: "  ",
     email: "citizen@example.com",
     password: "Password123",
-    role: "citizen",
+    role: "CITIZEN",
   });
 
   assert.equal(result.valid, false);
@@ -23,11 +23,11 @@ test("validateRegistration accepts valid citizen payload", () => {
     full_name: "Test Citizen",
     email: "citizen@example.com",
     password: "Password123",
-    role: "citizen",
+    role: "CITIZEN",
   });
 
   assert.equal(result.valid, true);
-  assert.equal(result.data.role, "citizen");
+  assert.equal(result.data.role, "CITIZEN");
 });
 
 test("validateLogin rejects short password", () => {

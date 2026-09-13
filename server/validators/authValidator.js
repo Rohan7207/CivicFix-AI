@@ -1,14 +1,12 @@
-const ALLOWED_ROLES = ["citizen", "department_admin", "super_admin"];
-
 function validateRegistration(payload = {}) {
   const full_name = String(payload.full_name || "").trim();
   const email = String(payload.email || "")
     .trim()
     .toLowerCase();
   const password = String(payload.password || "");
-  const role = String(payload.role || "citizen")
+  const role = String(payload.role || "CITIZEN")
     .trim()
-    .toLowerCase();
+    .toUpperCase();
 
   if (!full_name || full_name.length < 2) {
     return {
@@ -31,20 +29,13 @@ function validateRegistration(payload = {}) {
     };
   }
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    return {
-      valid: false,
-      message: "Role must be one of: citizen, department_admin, super_admin.",
-    };
-  }
-
   return {
     valid: true,
     data: {
       full_name,
       email,
       password,
-      role,
+      role: "CITIZEN",
     },
   };
 }
@@ -81,5 +72,4 @@ function validateLogin(payload = {}) {
 module.exports = {
   validateRegistration,
   validateLogin,
-  ALLOWED_ROLES,
 };

@@ -41,10 +41,7 @@ async function authenticate(req, res, next) {
       throw error;
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "your_jwt_secret",
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await getUserById(decoded.id);
 
     req.user = user;

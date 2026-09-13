@@ -1,12 +1,16 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-const { createUser, findByEmail, findById, sanitizeUser } = require('../models/userModel');
-const { validateRegistration, validateLogin } = require('../validators/authValidator');
+const {
+  createUser,
+  findByEmail,
+  findById,
+  sanitizeUser,
+} = require("../models/userModel");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const TOKEN_TTL = '7d';
-const TOKEN_COOKIE_NAME = 'token';
+const JWT_SECRET = process.env.JWT_SECRET;
+const TOKEN_TTL = "7d";
+const TOKEN_COOKIE_NAME = "token";
 
 function signToken(user) {
   return jwt.sign(
@@ -18,41 +22,33 @@ function signToken(user) {
     JWT_SECRET,
     {
       expiresIn: TOKEN_TTL,
-    }
+    },
   );
 }
 
 function setAuthCookie(res, token) {
   res.cookie(TOKEN_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
 
 async function registerUser(payload) {
-  const validation = validateRegistration(payload);
-
-  if (!validation.valid) {
-    const error = new Error(validation.message);
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const existingUser = await findByEmail(validation.data.email);
+  const existingUser = await findByEmail(payload.email);
   if (existingUser) {
-    const error = new Error('An account with this email already exists.');
+    const error = new Error("An account with this email already exists.");
     error.statusCode = 409;
     throw error;
   }
 
-  const password_hash = await bcrypt.hash(validation.data.password, 12);
+  const password_hash = await bcrypt.hash(payload.password, 12);
   const newUser = await createUser({
-    full_name: validation.data.full_name,
-    email: validation.data.email,
+    full_name: payload.full_name,
+    email: payload.email,
     password_hash,
-    role: validation.data.role,
+    role: payload.role,
   });
 
   const token = signToken(newUser);
@@ -64,24 +60,19 @@ async function registerUser(payload) {
 }
 
 async function loginUser(payload) {
-  const validation = validateLogin(payload);
-
-  if (!validation.valid) {
-    const error = new Error(validation.message);
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const user = await findByEmail(validation.data.email);
+  const user = await findByEmail(payload.email);
   if (!user) {
-    const error = new Error('Invalid email or password.');
+    const error = new Error("Invalid email or password.");
     error.statusCode = 401;
     throw error;
   }
 
-  const isPasswordValid = await bcrypt.compare(validation.data.password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(
+    payload.password,
+    user.password_hash,
+  );
   if (!isPasswordValid) {
-    const error = new Error('Invalid email or password.');
+    const error = new Error("Invalid email or password.");
     error.statusCode = 401;
     throw error;
   }
@@ -97,7 +88,7 @@ async function loginUser(payload) {
 async function getUserById(id) {
   const user = await findById(id);
   if (!user) {
-    const error = new Error('User not found.');
+    const error = new Error("User not found.");
     error.statusCode = 404;
     throw error;
   }

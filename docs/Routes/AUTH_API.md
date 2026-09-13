@@ -19,9 +19,8 @@ The backend uses JWT-based authentication with an HttpOnly cookie.
 - Passwords and JWTs are never returned in API JSON responses.
 - `password_hash` is removed from the user payload before it is sent back to the client.
 - Current user roles are:
-  - `citizen`
-  - `department_admin`
-  - `super_admin`
+  - `CITIZEN`
+  - `ADMIN`
 
 ## Relevant Authentication Status Codes
 
@@ -66,9 +65,8 @@ No
 
 The role must be one of the allowed roles for registration:
 
-- `citizen`
-- `department_admin`
-- `super_admin`
+- `CITIZEN`
+- `ADMIN`
 
 ### Request Headers
 
@@ -83,7 +81,7 @@ Content-Type: application/json
   "full_name": "Jane Doe",
   "email": "jane.doe@example.com",
   "password": "Password123",
-  "role": "citizen"
+  "role": "CITIZEN"
 }
 ```
 
@@ -103,7 +101,7 @@ Status: `201 Created`
     "id": 12,
     "full_name": "Jane Doe",
     "email": "jane.doe@example.com",
-    "role": "citizen",
+    "role": "CITIZEN",
     "created_at": "2026-09-12T10:15:00.000Z",
     "updated_at": "2026-09-12T10:15:00.000Z"
   }
@@ -164,7 +162,7 @@ VALUES (?, ?, ?, ?)
   - full name length >= 2
   - valid email format
   - password length >= 8
-  - role must be one of `citizen`, `department_admin`, `super_admin`
+  - role must be one of `CITIZEN`, `ADMIN`
 - The response payload does not include `password_hash` or the JWT token.
 - Cookies are automatically sent by the browser for subsequent authenticated requests when using the same origin and proper cookie credentials configuration.
 
@@ -223,7 +221,7 @@ Status: `200 OK`
     "id": 12,
     "full_name": "Jane Doe",
     "email": "jane.doe@example.com",
-    "role": "citizen",
+    "role": "CITIZEN",
     "created_at": "2026-09-12T10:15:00.000Z",
     "updated_at": "2026-09-12T10:15:00.000Z"
   }
@@ -422,7 +420,7 @@ Status: `200 OK`
     "id": 12,
     "full_name": "Jane Doe",
     "email": "jane.doe@example.com",
-    "role": "citizen",
+    "role": "CITIZEN",
     "created_at": "2026-09-12T10:15:00.000Z",
     "updated_at": "2026-09-12T10:15:00.000Z"
   }

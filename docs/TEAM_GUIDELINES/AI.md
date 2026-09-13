@@ -15,6 +15,7 @@ Member 3 is responsible for the **AI layer of CivicFix AI**.
 The AI layer is responsible for:
 
 - Complaint Analysis
+- Image Analysis
 - Issue Fusion / Duplicate Detection
 - Priority Engine
 - Evidence Analysis
@@ -31,25 +32,29 @@ Frontend/UI implementation is owned by the Frontend team.
 
 # 2. Current AI Architecture
 
-The intended AI workflow is:
+The current AI workflow is:
 
 ```text
-Citizen Complaint
-       ↓
-Complaint Analysis
-       ↓
-Structured Complaint
-       ↓
+Citizen Input
+   ↓
+Photo Analysis
+   ↓
+Optional Text / Voice Analysis
+   ↓
+Combined Evidence
+   ↓
 Issue Fusion
-       ↓
+   ↓
 Master Issue
-       ↓
+   ↓
+Evidence Analysis
+   ↓
 Priority Engine
-       ↓
+   ↓
 Priority Score + Level + Explanation
 ```
 
-Additional AI components may provide evidence or voice information to this workflow.
+Photo and location are required by the application flow. Description and voice are optional.
 
 ---
 
@@ -63,6 +68,18 @@ Location:
 
 ```text
 ai/complaintAnalysis/
+```
+
+Status:
+
+**Implemented and tested.**
+
+### Image Analysis
+
+Location:
+
+```text
+ai/imageAnalysis/
 ```
 
 Status:
@@ -91,35 +108,60 @@ ai/priorityEngine/
 
 Status:
 
-**Implemented with dedicated testing.**
+**Implemented and tested.**
 
----
+### Evidence Engine
 
-## Not Completed
-
-The following must **not** be represented as completed until properly implemented and tested:
-
-```text
-Evidence Engine
-Voice Analysis
-AI orchestration
-Backend integration
-Production deployment
-```
-
-Locations:
+Location:
 
 ```text
 ai/evidenceEngine/
+```
+
+Status:
+
+**Implemented and tested.**
+
+### Voice Analysis
+
+Location:
+
+```text
 ai/voiceAnalysis/
+```
+
+Status:
+
+**Implemented and tested.**
+
+### AI orchestration
+
+Location:
+
+```text
 ai/civicAI.js
+```
+
+Status:
+
+**Implemented and tested for multimodal same-issue and conflicting-issue cases.**
+
+---
+
+## Pending
+
+The following remain separate from the AI-side implementation:
+
+```text
+Backend integration
+Production deployment
 ```
 
 ---
 
 # 4. Complaint Analysis
 
-Complaint Analysis converts citizen-provided complaint information into structured civic information.
+Complaint Analysis converts citizen-provided complaint text into structured civic information.
 
 The current implementation uses:
 
@@ -128,9 +170,7 @@ Groq API
 openai/gpt-oss-120b
 ```
 
-### Expected information
-
-The analysis should provide:
+The current output contains:
 
 ```json
 {
@@ -140,62 +180,58 @@ The analysis should provide:
   "confidence": 0.0,
   "department": "string",
   "shortSummary": "string",
-  "language": "string"
+  "language": "string",
+  "englishTranslation": "string"
 }
 ```
 
-### Supported categories
-
-- Pothole
-- Garbage
-- Streetlight
-- Water Leakage
-- Drainage
-- Road Damage
-- Traffic Signal
-- Public Property Damage
-- Other
-
-### Rules
-
-- `severity` must follow the agreed 1–10 scale.
-- `safetyRisk` must use the agreed risk values.
-- `confidence` must represent the model's confidence.
-- `shortSummary` should be concise and useful for downstream processing.
-- Multilingual complaints must be supported.
-- The AI must not assume that all complaints are written in English.
+The implementation supports multilingual text complaints and has been tested with Kannada input.
 
 ---
 
-# 5. Issue Fusion
+# 5. Image Analysis
 
-Issue Fusion determines whether multiple citizen reports describe the **same real-world physical issue**.
+Image Analysis processes the mandatory complaint photo.
 
-Location:
+Location is not inferred from the image. Location is supplied separately by the application/backend flow.
 
-```text
-ai/issueFusion/
+The current output contains:
+
+```json
+{
+  "isCivicIssue": true,
+  "category": "Pothole",
+  "severity": 8,
+  "safetyRisk": "HIGH",
+  "confidence": 0.95,
+  "visualDescription": "string",
+  "visibleEvidence": [
+    "string"
+  ]
+}
 ```
 
-The decision should consider:
+The image layer has been tested with a civic road-damage image.
+
+---
+
+# 6. Issue Fusion
+
+Issue Fusion determines whether multiple evidence sources describe the **same real-world physical issue**.
+
+The current implementation considers:
 
 - Category
 - Physical location
 - Description similarity
-- Keywords
-- Landmarks
+- Important keywords
+- Physical landmarks
 - Severity
-- Other relevant evidence
+- Physical issue similarity
 
-### Core rule
+Different categories or different physical problems should not be merged merely because the coordinates are the same.
 
-Different wording does **not** automatically mean different issues.
-
-Different physical locations normally indicate different issues.
-
-If evidence is insufficient, the system should avoid incorrectly merging reports.
-
-### Expected output
+The engine returns:
 
 ```json
 {
@@ -210,113 +246,137 @@ If evidence is insufficient, the system should avoid incorrectly merging reports
 }
 ```
 
-The `reason` must explain why the reports were considered the same or different.
+It has been tested with both matching and conflicting multimodal evidence.
 
 ---
 
-# 6. Priority Engine
+# 7. Priority Engine
 
-The Priority Engine calculates the urgency of a civic issue.
+The Priority Engine calculates a deterministic priority score from **0–100**.
 
-It is currently **deterministic**, not an LLM-generated priority label.
+Current factors:
 
-The score ranges from:
+| Factor | Maximum |
+|---|---:|
+| Severity | 30 |
+| Safety Risk | 25 |
+| Report Count | 15 |
+| Important Location | 10 |
+| Duration | 10 |
+| AI Confidence | 10 |
+| **Total** | **100** |
 
-```text
-0–100
+Priority levels:
+
+| Score | Level |
+|---:|---|
+| 85–100 | CRITICAL |
+| 70–84 | HIGH |
+| 40–69 | MEDIUM |
+| 0–39 | LOW |
+
+The deterministic scoring methodology remains unchanged.
+
+---
+
+# 8. Evidence Analysis
+
+Evidence Analysis calculates a supporting-evidence score from the currently implemented factors.
+
+The current implementation uses:
+
+- Evidence-source count
+- Location consistency
+- Safety-risk agreement
+- Average AI confidence
+
+The engine returns:
+
+```json
+{
+  "evidenceScore": 0,
+  "evidenceLevel": "WEAK",
+  "explanation": "string",
+  "breakdown": {
+    "reportScore": 0,
+    "locationScore": 0,
+    "safetyScore": 0,
+    "confidenceScore": 0
+  }
+}
 ```
 
-### Factors
-
-| Factor             | Maximum |
-| ------------------ | ------: |
-| Severity           |      30 |
-| Safety Risk        |      25 |
-| Report Count       |      15 |
-| Important Location |      10 |
-| Duration           |      10 |
-| AI Confidence      |      10 |
-| **Total**          | **100** |
-
-### Priority levels
-
-|  Score | Level    |
-| -----: | -------- |
-| 85–100 | CRITICAL |
-|  70–84 | HIGH     |
-|  40–69 | MEDIUM   |
-|   0–39 | LOW      |
-
-The engine must provide:
-
-- Priority score
-- Priority level
-- Explanation
-- Score breakdown
-
-The deterministic calculation must remain transparent and reproducible.
+For multimodal input, evidence sources are distinct from citizen report count. One citizen can provide photo, text, and voice as multiple evidence sources for one report.
 
 ---
 
-# 7. Evidence Analysis
+# 9. Voice Analysis
 
-Evidence Analysis is part of the planned AI architecture but is **not currently considered completed**.
+Voice processing is optional.
 
-The mandatory rule is:
-
-> Do not mark or document Evidence Analysis as completed until implementation and testing are finished.
-
-When implemented, it must integrate with the approved CivicFix workflow without independently changing backend records.
-
----
-
-# 8. Voice Analysis
-
-Voice processing is planned but **not currently considered completed**.
-
-When implemented:
+Current flow:
 
 ```text
 Citizen Voice
       ↓
-Voice Processing / Transcription
-      ↓
-Complaint Information
+Speech-to-text
       ↓
 Complaint Analysis
+      ↓
+Structured Complaint Information
 ```
 
-Voice is optional for a complaint.
-
-The AI member must not assume that voice processing is complete merely because the folder or prompt exists.
+The implemented flow supports spoken civic complaints in different languages and has been tested with a real audio input.
 
 ---
 
-# 9. AI Orchestration
+# 10. AI Orchestration
 
-`ai/civicAI.js` is intended to coordinate the AI components.
+`ai/civicAI.js` coordinates the AI components.
 
-However, orchestration must not be treated as completed until it is actually implemented, tested, and integrated with the agreed workflow.
-
-The intended flow is:
+Input rules:
 
 ```text
-Input
- ↓
-Complaint Analysis
- ↓
-Issue Fusion
- ↓
-Priority
- ↓
-Final AI Result
+Photo       REQUIRED
+Location    REQUIRED
+Description OPTIONAL
+Voice       OPTIONAL
 ```
 
-The exact orchestration contract must be discussed with the Backend team before backend integration.
+Valid combinations:
+
+```text
+Photo + Location
+Photo + Location + Description
+Photo + Location + Voice
+Photo + Location + Description + Voice
+```
+
+The orchestrator:
+
+```text
+Photo
+  ↓
+Image Analysis
+  ↓
+Optional Text / Voice Analysis
+  ↓
+Issue Fusion
+  ↓
+Evidence Analysis
+  ↓
+Priority Engine
+  ↓
+Master Issue / Final AI Result
+```
+
+When multimodal evidence describes different physical problems, the orchestrator returns the evidence separately instead of creating an empty Master Issue or treating the inputs as supporting evidence for one issue.
+
+Citizen report count is kept separate from the number of evidence sources.
 
 ---
 
-# 10. Backend Integration Boundary
+# 11. Backend Integration Boundary
 
 The Backend team owns:
 
@@ -341,11 +401,7 @@ The AI member owns:
 - AI-side validation
 - AI tests
 
-### Important
-
 AI must **not directly modify the MySQL database**.
-
-AI should return structured results to the Backend.
 
 ```text
 Backend
@@ -361,23 +417,17 @@ Database
 
 ---
 
-# 11. Frontend Boundary
+# 12. Frontend Boundary
 
 Member 3 must not directly modify frontend functionality unless the team explicitly agrees.
 
-Frontend owns:
+The frontend collects the mandatory Photo and Location and the optional Description and Voice.
 
-```text
-client/
-```
-
-AI provides data/results that the Backend can expose through APIs.
-
-The AI member must not create frontend-specific logic inside the AI layer.
+AI provides analysis results that the Backend can expose through APIs.
 
 ---
 
-# 12. File Ownership
+# 13. File Ownership
 
 Member 3 primarily works inside:
 
@@ -389,13 +439,9 @@ docs/TEAM_GUIDELINES/AI.md
 
 Changes outside these areas require discussion with the responsible team member.
 
-Do not modify Backend or Frontend files merely to make AI development easier.
-
-If integration requires changes outside the AI area, coordinate with the relevant member first.
-
 ---
 
-# 13. Technology Rules
+# 14. Technology Rules
 
 Current AI implementation uses:
 
@@ -403,14 +449,17 @@ Current AI implementation uses:
 - Node.js
 - Groq SDK
 - Groq LLM
+- Vision-capable Groq model
 - dotenv
 - JSON
 
-Current LLM:
+Text analysis currently uses:
 
 ```text
 openai/gpt-oss-120b
 ```
+
+The Image Analysis model is configured separately through the environment.
 
 API keys must always be stored in environment variables.
 
@@ -420,25 +469,24 @@ Never commit:
 GROQ_API_KEY
 ```
 
-or any other secret/API credential.
-
 ---
 
-# 14. Testing Requirements
+# 15. Testing Requirements
 
 Every AI component must have a dedicated or appropriate test.
 
-At minimum, testing should verify:
+The current Member 3 work has been tested for:
 
-- Valid input
-- Expected structured output
-- Invalid/unexpected model output
-- JSON parsing
-- Important boundary conditions
-- Multilingual input where applicable
-- Confidence/severity/risk values
-- Fusion decisions
-- Priority calculations
+- Complaint analysis
+- Multilingual complaint analysis
+- Issue Fusion
+- Evidence calculation
+- Priority calculation
+- Voice processing
+- Image analysis
+- Multimodal orchestration
+- Same-issue evidence
+- Conflicting-issue evidence
 
 A feature is not considered completed merely because the source file exists.
 
@@ -456,31 +504,17 @@ Documented
 
 ---
 
-# 15. AI Output Contract
+# 16. AI Output Contract
 
 AI outputs must remain structured and predictable.
 
 Do not casually change field names or data types.
 
-For example, changing:
-
-```text
-severity
-```
-
-to:
-
-```text
-severityScore
-```
-
-can break Backend integration.
-
-Any change to an agreed AI output contract must be discussed with the Backend member before implementation.
+The current implementation and the Backend contract still contain some field-name/type differences. These must be resolved with the Backend team before changing the shared integration contract.
 
 ---
 
-# 16. Change Management
+# 17. Change Management
 
 Member 3 must discuss before:
 
@@ -496,31 +530,17 @@ Member 3 must discuss before:
 - Modifying Backend-owned files
 - Modifying Frontend-owned files
 
-Small internal improvements that do not affect contracts may be implemented normally.
-
 ---
 
-# 17. No Independent Feature Expansion
+# 18. No Independent Feature Expansion
 
 Do not add AI features simply because they seem useful.
 
-Examples:
-
-- New AI agents
-- Chatbot
-- Recommendation system
-- Sentiment analysis
-- Predictive maintenance
-- New scoring factors
-- New categories
-
-These require team discussion first.
-
-The hackathon implementation should prioritize the approved CivicFix workflow.
+The current implementation should remain focused on the approved CivicFix workflow.
 
 ---
 
-# 18. Documentation Requirements
+# 19. Documentation Requirements
 
 Whenever an AI component is completed or significantly changed:
 
@@ -531,15 +551,11 @@ Whenever an AI component is completed or significantly changed:
 5. Document its implementation status.
 6. Ensure documentation matches the actual code.
 
-Never document unfinished work as completed.
-
 ---
 
-# 19. Git Rules
+# 20. Git Rules
 
 Member 3 must work on the assigned AI branch.
-
-Do not directly push AI work to `main`.
 
 Before creating a Pull Request:
 
@@ -557,11 +573,9 @@ Push branch
 Create Pull Request
 ```
 
-The PR should contain only the intended AI work.
-
 ---
 
-# 20. Pull Request Requirements
+# 21. Pull Request Requirements
 
 Every AI PR should clearly state:
 
@@ -572,11 +586,9 @@ Every AI PR should clearly state:
 - Any dependency changes
 - Any remaining limitations
 
-Do not include unrelated frontend/backend changes in an AI PR.
-
 ---
 
-# 21. Definition of Done
+# 22. Definition of Done
 
 An AI feature is considered **DONE** only when:
 
@@ -592,7 +604,7 @@ An AI feature is considered **DONE** only when:
 
 ---
 
-# 22. Final Rule
+# 23. Final Rule
 
 > **Do not assume. Do not independently change shared contracts. Do not mark unfinished work as completed.**
 
@@ -611,7 +623,3 @@ Document
    ↓
 PR
 ```
-
-The goal is not simply to build individual AI components.
-
-The goal is to make the AI layer work reliably as one part of the complete CivicFix workflow.

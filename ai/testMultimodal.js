@@ -18,7 +18,7 @@ const input = {
 
     // Optional
     description:
-        "There is a large garbage pile near the school gate.",
+        "Traffic signal hanging precariously by a single wire from a metal pole.",
 
     // Optional
     voice:

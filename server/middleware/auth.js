@@ -60,7 +60,31 @@ async function authenticate(req, res, next) {
   }
 }
 
+function requireRole(requiredRole) {
+  return function requireRoleMiddleware(req, res, next) {
+    const userRole = String(
+      req.user && req.user.role ? req.user.role : "",
+    ).toUpperCase();
+    const targetRole = String(requiredRole || "").toUpperCase();
+
+    if (userRole !== targetRole) {
+      const error = new Error(
+        `Only ${targetRole.toLowerCase()} users can access this resource.`,
+      );
+      error.statusCode = 403;
+      error.code = "FORBIDDEN";
+      return next(error);
+    }
+
+    return next();
+  };
+}
+
+const requireAdmin = requireRole("ADMIN");
+
 module.exports = {
   authenticate,
   getTokenFromRequest,
+  requireRole,
+  requireAdmin,
 };

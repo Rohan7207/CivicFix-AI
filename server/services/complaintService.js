@@ -1,5 +1,9 @@
 const { pool } = require("../config/database");
 const {
+  analyzeAndStoreComplaint,
+} = require("./aiServices/complaintAnalysisService");
+
+const {
   uploadFileToImageKit,
   deleteFileFromImageKit,
 } = require("../config/imagekit");
@@ -140,9 +144,15 @@ async function createComplaintRecord({ user, body, files }) {
 
     await connection.commit();
 
+    const aiAnalysis = await analyzeAndStoreComplaint({
+      complaintId: complaint.id,
+      complaintText: payload.description,
+    });
+
     return {
       complaint,
       evidence,
+      aiAnalysis,
     };
   } catch (error) {
     await connection.rollback();
@@ -159,7 +169,10 @@ async function createComplaintRecord({ user, body, files }) {
       try {
         await deleteFileFromImageKit(fileId);
       } catch (cleanupError) {
-        console.warn("ImageKit cleanup failed after complaint transaction error:", cleanupError.message);
+        console.warn(
+          "ImageKit cleanup failed after complaint transaction error:",
+          cleanupError.message,
+        );
       }
     }
 

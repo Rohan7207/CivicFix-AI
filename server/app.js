@@ -6,6 +6,7 @@ const notFoundHandler = require("./middleware/notFound");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/authRoutes");
 const complaintRoutes = require("./routes/complaintRoutes");
+const masterIssueRoutes = require("./routes/masterIssueRoutes");
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
+app.use("/api/master-issues", masterIssueRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

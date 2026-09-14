@@ -12,6 +12,7 @@ function respondWithError(res, statusCode, code, message) {
 
 async function createComplaint(req, res) {
   try {
+    console.log("REQ.FILES:", req.files);
     const result = await complaintService.createComplaintRecord({
       user: req.user,
       body: req.body,

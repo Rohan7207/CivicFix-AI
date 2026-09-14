@@ -1,73 +1,76 @@
-# CivicFix — BACKEND.md
+# CivicFix — FRONTEND.md
 
-**Role:** Member 2 — Backend, Database & Civic Workflow
-**Stack:** Node.js + Express.js + MySQL + JWT + ImageKit
-**Purpose:** Backend implementation source of truth
+**Project:** CivicFix
+**Frontend Responsibility:** Citizen UI + Admin UI
+**Status:** Frontend Source of Truth
 
 ---
 
-# 1. Architecture
+# 1. Purpose
+
+The frontend provides the user interface for CivicFix.
+
+It communicates **only with the backend API**.
 
 ```text
-Frontend
-   ↓
-Backend API
-   ├── MySQL       → structured data
-   ├── ImageKit    → photos / voice
-   └── AI Service  → analysis
+Frontend → Backend → AI / MySQL / ImageKit
 ```
 
-### Responsibility
+The frontend must never directly communicate with:
 
-**Frontend**
-
-- Collect input
-- Display results
-- Handle UI state
-
-**Backend**
-
-- Auth
-- Validation
-- Database
-- ImageKit
-- AI orchestration
-- Issue Fusion
-- Master Issues
-- Priority
-- Department assignment
-- Workflow
-- Verification
-
-**AI**
-
-- Analyze complaints/evidence
-- Return recommendations/signals
-
-> Backend is always authoritative.
+- MySQL
+- AI service
+- ImageKit private APIs
 
 ---
 
-# 2. Complaint Contract
+# 2. Core Citizen Flow
+
+```text
+Login
+  ↓
+Dashboard
+  ↓
+Report Issue
+  ↓
+Photo + Location
+  ↓
+Optional Description / Voice
+  ↓
+Submit
+  ↓
+AI Analysis
+  ↓
+Master Issue
+  ↓
+Priority + Department
+  ↓
+Track Status
+  ↓
+Fixed
+  ↓
+Verify
+  ↓
+Closed / Reopened
+```
+
+---
+
+# 3. Complaint Form
+
+The complaint form must contain:
 
 ### Required
 
-```text
-photo
-location
-  ├── latitude
-  └── longitude
-```
+- Photo
+- Location
 
 ### Optional
 
-```text
-description
-voice
-address
-```
+- Description
+- Voice
 
-Valid:
+Valid combinations:
 
 ```text
 Photo
@@ -83,470 +86,260 @@ No Photo
 No Location
 ```
 
-Category is **not selected by the citizen**. AI determines it.
+---
+
+# 4. Photo
+
+Photo upload is mandatory.
+
+Frontend should provide:
+
+- Image selection
+- Preview
+- Remove/replace
+- Upload validation feedback
+
+Backend performs the final validation and uploads the file to ImageKit.
+
+Frontend must **not** contain ImageKit private credentials.
 
 ---
 
-# 3. Evidence Storage
+# 5. Voice
 
-Use **ImageKit** for:
+Voice recording/upload is optional.
 
-```text
-PHOTO
-VOICE
-```
+Frontend should support:
 
-MySQL stores only:
+- Record voice
+- Stop recording
+- Preview/playback
+- Remove/replace
 
-```text
-imagekit_url
-imagekit_file_id
-original_filename
-mime_type
-file_size
-type
-```
-
-Never store binary files in MySQL.
-
-### Photo
-
-- Mandatory
-- JPEG / PNG / WEBP
-- Maximum 10 MB initially
-
-### Voice
-
-- Optional
-- Validate MIME type and size
-
-ImageKit private credentials stay in `.env`.
+Backend handles validation and ImageKit storage.
 
 ---
 
-# 4. Authentication
+# 6. Description
 
-Use:
+Description is optional.
+
+Do not force the citizen to write text.
+
+Example:
 
 ```text
-JWT + HttpOnly Cookie
+Photo only → Valid
+Photo + description → Valid
 ```
 
-Do **not** use:
+---
+
+# 7. Location
+
+Location is required.
+
+Frontend should allow:
+
+- Current location
+- Map/location selection where applicable
+- Latitude
+- Longitude
+- Address/location text when available
+
+Backend validates the final coordinates.
+
+---
+
+# 8. Category
+
+Do **not** make category selection mandatory.
+
+The citizen reports the problem.
+
+AI determines the category.
+
+Frontend displays the AI-classified category after analysis.
+
+---
+
+# 9. Authentication
+
+Use backend JWT authentication through **HttpOnly cookies**.
+
+Do not store JWT in:
 
 ```text
 localStorage
 sessionStorage
 ```
 
-Roles:
+Frontend handles:
+
+- Register
+- Login
+- Logout
+- Protected routes
+- Authentication loading states
+- Authentication errors
+
+---
+
+# 10. Roles
+
+Supported roles in the current MVP:
 
 ```text
 CITIZEN
 ADMIN
 ```
 
-No Moderator role.
-
-Backend must enforce authorization; frontend role checks are only for UI.
+There is no Department Admin or Super Admin role in the current active schema. Frontend role-based UI is only for display/navigation. Backend remains responsible for authorization.
 
 ---
 
-# 5. Main Database Tables
+# 11. Citizen Dashboard
 
-```text
-users
-departments
-complaints
-complaint_evidence
-complaint_ai_analysis
-master_issues
-issue_status_history
-issue_verifications
-```
+Dashboard should show:
 
-### complaints
+- Complaint/report count
+- Active issues
+- Recent reports
+- Status
+- Priority
+- Category
+- Department
+- Nearby civic issues
 
-```text
-id
-citizen_id
-description        nullable
-latitude
-longitude
-address            nullable
-master_issue_id    nullable
-status
-created_at
-updated_at
-```
-
-### complaint_evidence
-
-```text
-id
-complaint_id
-type               PHOTO / VOICE
-imagekit_url
-imagekit_file_id
-original_filename
-mime_type
-file_size
-created_at
-```
-
-### complaint_ai_analysis
-
-```text
-id
-complaint_id
-category
-severity
-safety_risk
-confidence
-recommended_department
-summary
-detected_language
-analysis_version
-created_at
-updated_at
-```
-
-### master_issues
-
-```text
-id
-category
-title/summary
-latitude
-longitude
-priority
-status
-department_id
-created_at
-updated_at
-```
+Keep the dashboard simple and useful.
 
 ---
 
-# 6. Complaint API
+# 12. Complaint Details
 
-### Create
-
-```http
-POST /complaints
-```
-
-`multipart/form-data`
+Complaint detail should display:
 
 ```text
-photo       required
-description optional
-voice       optional
-latitude    required
-longitude   required
-address     optional
-```
-
-### List
-
-```http
-GET /complaints
-```
-
-Support pagination and useful filters.
-
-### Details
-
-```http
-GET /complaints/:id
-```
-
-Return complaint, evidence, AI analysis, Master Issue, priority, department and status.
-
----
-
-# 7. Complaint Creation Flow
-
-```text
-Authenticate
-    ↓
-Validate input
-    ↓
-Validate photo/voice
-    ↓
-Upload evidence → ImageKit
-    ↓
-Create complaint + evidence → MySQL
-    ↓
-Commit
-    ↓
-AI analysis
-    ↓
-Issue Fusion
-    ↓
-Master Issue
-    ↓
+Photo / Evidence
+Description
+Location
+Category
+AI Summary
+AI Severity
+Safety Risk
+AI Confidence
 Priority
-    ↓
-Department assignment
+Department
+Master Issue status/details, when applicable
+Related report count, when applicable
+Internal AI grouping logic should not be exposed to citizens.
+Current Status
 ```
 
-If ImageKit fails:
-
-```text
-Do not create the complaint.
-```
-
-If AI fails:
-
-```text
-Keep complaint + evidence.
-Allow AI retry.
-```
-
----
-
-# 8. AI Contract
-
-Backend calls AI. Frontend never calls AI directly.
-
-AI returns:
-
-```json
-{
-  "category": "ROAD_DAMAGE",
-  "severity": "HIGH",
-  "safetyRisk": true,
-  "confidence": 0.91,
-  "recommendedDepartment": "ROADS",
-  "summary": "Large pothole creating a traffic safety risk.",
-  "detectedLanguage": "en"
-}
-```
-
-### Confidence
-
-Always:
+AI confidence comes from backend as:
 
 ```text
 0–1
 ```
 
-Example:
-
-```text
-0.91
-```
-
-### Important
-
-AI severity ≠ final priority.
-
-Backend validates every AI response before storing it.
+Frontend may display it as a percentage.
 
 ---
 
-# 9. Issue Fusion
+# 13. Master Issues
 
-Issue Fusion determines whether multiple reports represent the same real-world issue.
+The current MVP does not automate Master Issue creation or AI-based issue fusion. The database supports a complaint-to-master-issue relationship through `complaints.master_issue_id`, but that relationship is not yet the result of a full AI grouping workflow.
 
-Consider:
-
-```text
-location
-category
-description
-photo/evidence
-AI analysis
-nearby existing issues
-```
-
-Multiple complaints may connect to one:
+Example conceptually:
 
 ```text
-Master Issue
-```
-
-Do not merge issues using only category or distance.
-
----
-
-# 10. Master Issue
-
-A Master Issue represents the real civic problem.
-
-Example:
-
-```text
-Master Issue
-├── Category: ROAD_DAMAGE
-├── Reports: 7
-├── Priority: HIGH
-├── Department: Roads
-└── Status: IN_PROGRESS
-```
-
-Multiple complaints can belong to one Master Issue.
-
-`reportCount` should be available through the API.
-
----
-
-# 11. Priority Engine
-
-Final priority is determined by the **backend**, not AI.
-
-Possible inputs:
-
-```text
-AI severity
-AI safety risk
-AI confidence
-report count
-issue context
-```
-
-Output:
-
-```text
-LOW
-MEDIUM
-HIGH
-CRITICAL
-```
-
-The scoring formula must be explicitly defined before implementation.
-
-Do not invent a complex formula without agreement.
-
----
-
-# 12. Department Assignment
-
-AI can recommend a department.
-
-Backend validates and performs the final assignment.
-
-```text
-AI recommendation
+Several citizen reports
        ↓
-Backend rules
+One real-world civic problem
        ↓
-Department assignment
+One Master Issue record
 ```
+
+Frontend should treat the Master Issue as a consolidated operational concept, while citizens continue to interact primarily with their own complaint status and evidence.
 
 ---
 
-# 13. Civic Workflow
+# 14. Nearby Issue Map
 
-Allowed flow:
+Citizen dashboard should support a nearby civic issue view.
+
+Display:
+
+- Issue location
+- Category
+- Priority
+- Status
+- Report count
+- Short summary
+
+Use:
+
+```http
+GET /issues/nearby
+```
+
+Frontend does not perform duplicate detection.
+
+---
+
+# 15. Status Tracking
+
+Frontend displays the backend workflow:
 
 ```text
 PENDING_AI_ANALYSIS
-        ↓
 AI_ANALYZED
-        ↓
 MASTER_LINKED
-        ↓
 ASSIGNED
-        ↓
 IN_PROGRESS
-        ↓
 FIXED
-        ↓
 AWAITING_VERIFICATION
-        ↓
 CLOSED
 ```
 
-Failed verification:
+Reopened flow:
 
 ```text
-AWAITING_VERIFICATION
-        ↓
+NOT_FIXED
+   ↓
 REOPENED
-        ↓
+   ↓
 IN_PROGRESS
 ```
 
-Frontend cannot arbitrarily change status.
-
-Backend validates every transition.
+Do not allow users to arbitrarily change status.
 
 ---
 
-# 14. Verification
+# 16. Citizen Verification
 
-Table:
-
-```text
-issue_verifications
-├── id
-├── master_issue_id
-├── citizen_id
-├── result
-├── comment
-└── created_at
-```
-
-Results:
+When an issue reaches:
 
 ```text
-VERIFIED
-NOT_FIXED
+AWAITING_VERIFICATION
 ```
 
-`NOT_FIXED` causes the issue to reopen.
+show:
+
+```text
+✓ Issue Fixed
+✗ Issue Not Fixed
+```
+
+Optional verification comment may be provided.
+
+Backend decides the resulting status.
 
 ---
 
-# 15. Nearby Issues
+# 17. API Contract
 
-Endpoint:
-
-```http
-GET /issues/nearby?latitude=&longitude=&radius=
-```
-
-Return Master Issues containing:
-
-```text
-masterIssueId
-latitude
-longitude
-category
-priority
-status
-reportCount
-summary
-```
-
-Frontend only displays them.
-
-Backend performs the actual geographic filtering.
-
----
-
-# 16. Dashboard
-
-```http
-GET /dashboard
-```
-
-Can provide:
-
-```text
-Complaint counts
-Status counts
-Recent reports
-Active issues
-```
-
-Keep the response structured and frontend-independent.
-
----
-
-# 17. API Response Format
+Frontend uses the backend response format.
 
 ### Success
 
@@ -569,200 +362,135 @@ Keep the response structured and frontend-independent.
 }
 ```
 
-Common errors:
-
-```text
-VALIDATION_ERROR
-UNAUTHORIZED
-FORBIDDEN
-NOT_FOUND
-CONFLICT
-FILE_TOO_LARGE
-UNSUPPORTED_FILE_TYPE
-UPLOAD_FAILED
-AI_ANALYSIS_FAILED
-INVALID_STATUS_TRANSITION
-INTERNAL_SERVER_ERROR
-```
+Frontend should display useful error messages instead of exposing raw server errors.
 
 ---
 
-# 18. Security
+# 18. Features NOT Currently Required
 
-Must have:
-
-- Password hashing
-- JWT HttpOnly cookies
-- Input validation
-- Parameterized SQL
-- Authorization middleware
-- Ownership checks
-- File validation
-- AI response validation
-- Secure production cookies
-- Explicit CORS origin
-
-Never expose:
-
-```text
-JWT_SECRET
-IMAGEKIT_PRIVATE_KEY
-AI_API_KEY
-password hashes
-```
-
----
-
-# 19. Environment Variables
-
-```env
-PORT=
-
-DB_HOST=
-DB_PORT=
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-
-JWT_SECRET=
-JWT_EXPIRES_IN=
-
-IMAGEKIT_PUBLIC_KEY=
-IMAGEKIT_PRIVATE_KEY=
-IMAGEKIT_URL_ENDPOINT=
-
-AI_BASE_URL=
-AI_API_KEY=
-
-FRONTEND_URL=
-```
-
-Never commit `.env`.
-
----
-
-# 20. Frontend Compatibility
-
-Preferred complaint routes:
-
-```http
-POST /complaints
-GET /complaints
-GET /complaints/:id
-```
-
-If the existing frontend already uses:
-
-```http
-/issues/report
-/issues
-/issues/:id
-```
-
-do not break it accidentally.
-
-Migrate frontend and backend together or temporarily alias the route.
-
-Do not maintain two separate implementations.
-
----
-
-# 21. Development Order
-
-Implement in this order:
-
-```text
-1. Backend foundation
-2. Authentication
-3. ImageKit evidence
-4. Complaint APIs
-5. AI integration
-6. Issue Fusion
-7. Master Issues
-8. Priority Engine
-9. Department Assignment
-10. Civic Workflow
-11. Verification
-12. Dashboard / Nearby Issues
-```
-
-Do not implement future phases early.
-
----
-
-# 22. Cursor / VS Code Rules
-
-When using Cursor/Copilot:
-
-1. Read `BACKEND.md`.
-2. Inspect the existing code first.
-3. Identify exact files to change.
-4. Explain why those files need changes.
-5. Implement only the current requirement.
-6. Do not rewrite unrelated code.
-7. Do not add unapproved features.
-8. Test the change.
-9. Review `git diff`.
-10. Commit only related changes.
-
-### Never ask AI to:
-
-```text
-"Rewrite the whole backend."
-"Improve everything."
-"Add all CivicFix features."
-```
-
-Instead:
-
-```text
-Implement only Phase X from BACKEND.md.
-```
-
----
-
-# 23. Features Currently Out of Scope
-
-Do not implement unless explicitly approved:
+Do not implement:
 
 ```text
 Phone number
 Profile pictures
 Moderator role
-Refresh tokens
+Refresh-token UI
 JWT localStorage
-Custom citizen categories
-Rich text editor
-Weather integration
-Time-of-day analysis
+Custom categories
+Rich-text editor
+Weather information
+Time-of-day information
 Estimated resolution time
-Generic comments
+Generic citizen comments
 Full notification system
 ```
 
----
-
-# 24. Definition of Done
-
-A backend feature is complete when:
-
-```text
-✓ Requirement implemented
-✓ Validation added
-✓ Authorization checked
-✓ Database consistency maintained
-✓ Error handling added
-✓ API contract followed
-✓ Tests pass
-✓ No secrets committed
-✓ No unrelated code changed
-✓ Git diff reviewed
-```
+These can be added later only through an explicit requirement change.
 
 ---
 
-# 25. Core Rule
+# 19. Frontend Design Principles
 
-> **Citizen reports. AI analyzes. Backend decides and orchestrates. MySQL stores structured data. ImageKit stores evidence. Frontend displays the result.**
+Frontend should be:
 
-**END OF BACKEND.md**
+- Responsive
+- Mobile-friendly
+- Accessible
+- Simple
+- Fast
+- Consistent
+- Component-based
+
+Both desktop and mobile layouts must be considered.
+
+Do not optimize only for desktop.
+
+---
+
+# 20. Frontend Responsibility Boundary
+
+Frontend
+
+↓
+
+Collects citizen input
+
+↓
+
+Displays backend results
+
+↓
+
+Handles UI state
+
+Backend
+
+↓
+
+Validates requests
+
+↓
+
+Stores complaint and evidence data
+
+↓
+
+Manages complaint and Master Issue relationships
+
+↓
+
+Controls authorization and workflow
+
+↓
+
+[Planned] Calls AI
+
+↓
+
+[Planned] Handles AI-based issue fusion
+
+↓
+
+[Planned] Applies AI priority recommendation
+
+↓
+
+## [Planned] Applies AI department recommendation
+
+# 21. Development Rule
+
+Implement frontend features according to the backend API contract.
+
+Do not invent:
+
+- New API fields
+- New statuses
+- New roles
+- New AI outputs
+- New workflow states
+
+without updating the agreed contract first.
+
+---
+
+# 22. Cursor / VS Code Rule
+
+When using an AI coding assistant:
+
+1. Read `FRONTEND.md`.
+2. Inspect the existing frontend.
+3. Change only the required files.
+4. Do not rewrite unrelated components.
+5. Do not add unapproved features.
+6. Test desktop and mobile.
+7. Review the diff before committing.
+
+---
+
+# 23. One Rule to Remember
+
+> **Frontend collects and displays. Backend decides. AI analyzes.**
+
+---
+
+**END OF FRONTEND.md**

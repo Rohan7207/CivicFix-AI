@@ -194,7 +194,7 @@ file_size
 created_at
 ```
 
-### complaint_ai_analysis
+### ai_analysis
 
 ```text
 id
@@ -203,10 +203,10 @@ category
 severity
 safety_risk
 confidence
-recommended_department
-summary
-detected_language
-analysis_version
+department
+short_summary
+language
+english_translation
 created_at
 updated_at
 ```
@@ -215,16 +215,17 @@ updated_at
 
 ```text
 id
-category
-title/summary
-latitude
-longitude
-priority
-status
 department_id
+code
+title
+description
+severity
+is_active
 created_at
 updated_at
 ```
+
+> The current schema stores `complaints.master_issue_id` as the complaint-to-master-issue link. AI grouping, duplicate detection, and automated master issue creation are still planned work and are not currently implemented as a backend workflow.
 
 ---
 

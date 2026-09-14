@@ -172,6 +172,64 @@ POST `/api/complaints` success example:
 
 These endpoints and validations have been implemented in the backend and exercised by the project's current tests and manual checks. AI analysis, Issue Fusion, Master Issue linking, Priority Engine, Department Assignment, Workflow transitions, and Verification are NOT implemented in these endpoints and are explicitly out-of-scope for the current MVP.
 
+## 13. Master Issue API (admin-only)
+
+The backend now includes a minimal admin-only Master Issue API for managing grouped civic problems that may contain multiple related complaints. This is intentionally backend-managed and does not create a citizen-facing "create master issue" workflow.
+
+### 13.1 Endpoints
+
+- `POST /api/master-issues` — Create a Master Issue. Requires `ADMIN` role and valid `department_id`, `code`, `title`, `description`, and optional `severity` / `is_active`.
+- `GET /api/master-issues` — List Master Issues for the admin dashboard. Includes department metadata, severity, active status, and complaint counts where available.
+- `GET /api/master-issues/:id` — Fetch one Master Issue record, including complaint count and department details.
+- `GET /api/master-issues/:id/complaints` — List complaints grouped under the selected Master Issue. Intended for admin verification before or during issue-fusion review.
+- `PATCH /api/master-issues/:id` — Update allowed admin-managed fields only: `title`, `description`, `severity`, `department_id`, and `is_active`.
+
+### 13.2 Request / Response conventions
+
+Responses follow the project's standard JSON wrapper:
+
+```json
+{
+  "success": true,
+  "data": {
+    "masterIssue": {
+      "id": 1,
+      "department_id": 4,
+      "code": "MI-2026-001",
+      "title": "Large road pothole",
+      "severity": "high",
+      "is_active": true
+    }
+  }
+}
+```
+
+Errors follow the same pattern as the rest of the backend:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Only admin users can access this resource."
+  }
+}
+```
+
+### 13.3 Authorization
+
+- Requires authenticated JWT cookie.
+- Restricts access to `ADMIN` users only.
+- `CITIZEN` users cannot list, create, update, or inspect admin master-issue records.
+
+### 13.4 Database usage
+
+The API reads and writes the existing `master_issues` table and joins to `departments` for display metadata. The complaint-to-master-issue relationship is managed through the existing `complaints.master_issue_id` foreign key to `master_issues.id`.
+
+### 13.5 AI integration status
+
+AI issue-fusion logic is planned but is not yet integrated. The backend currently provides the admin-managed Master Issue CRUD and grouping review endpoints, keeping database ownership and validation logic centralized in the backend. but backend AI orchestration is not yet integrated into this route set. The backend currently provides the admin-managed Master Issue CRUD and grouping review endpoints, keeping the database ownership and validation logic centralized in the backend.
+
 ---
 
 Document maintained for the hackathon MVP. Keep concise; if you extend the complaint workflow (AI, fusion, master issues), document those features separately when implemented.

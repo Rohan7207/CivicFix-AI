@@ -1,40 +1,39 @@
 const Groq = require("groq-sdk");
 const fs = require("fs");
+const path = require("path");
+const os = require("os");
 
 const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
+  apiKey: process.env.GROQ_API_KEY,
 });
 
+async function transcribeVoice(audioBuffer, originalFilename) {
+  if (!audioBuffer) {
+    throw new Error("Audio buffer is required.");
+  }
 
-async function transcribeVoice(audioPath) {
+  const extension = path.extname(originalFilename) || ".webm";
 
-    if (!audioPath) {
-        throw new Error("Audio file path is required.");
-    }
+  const tempPath = path.join(os.tmpdir(), `civicfix-${Date.now()}${extension}`);
 
-    if (!fs.existsSync(audioPath)) {
-        throw new Error("Audio file not found.");
-    }
+  fs.writeFileSync(tempPath, audioBuffer);
 
-    const transcription =
-        await groq.audio.transcriptions.create({
-
-            file: fs.createReadStream(audioPath),
-
-            model: "whisper-large-v3",
-
-            response_format: "verbose_json"
-        });
-
+  try {
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(tempPath),
+      model: "whisper-large-v3",
+      response_format: "verbose_json",
+    });
 
     return {
-        transcription:
-            transcription.text,
-
-        language:
-            transcription.language || "unknown"
+      transcription: transcription.text,
+      language: transcription.language || "unknown",
     };
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+  }
 }
-
 
 module.exports = transcribeVoice;

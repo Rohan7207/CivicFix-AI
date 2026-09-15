@@ -19,6 +19,7 @@ const {
   createEvidence,
   findByComplaintId,
 } = require("../models/complaintEvidenceModel");
+const transcribeVoice = require("../../ai/voiceAnalysis/transcribeVoice");
 
 const DEFAULT_STATUS = "PENDING_AI_ANALYSIS";
 
@@ -144,9 +145,23 @@ async function createComplaintRecord({ user, body, files }) {
 
     await connection.commit();
 
+    connection.release();
+
+    let voiceText = null;
+
+    if (fileUploads.voice) {
+      const transcription = await transcribeVoice(
+        payload.voice.buffer,
+        payload.voice.originalname,
+      );
+      voiceText = transcription.transcription;
+    }
+
     const aiAnalysis = await analyzeAndStoreComplaint({
       complaintId: complaint.id,
       complaintText: payload.description,
+      imageUrl: fileUploads.photo.url,
+      voiceText,
     });
 
     return {
@@ -183,7 +198,7 @@ async function createComplaintRecord({ user, body, files }) {
     wrappedError.code = error.code || "INTERNAL_SERVER_ERROR";
     throw wrappedError;
   } finally {
-    connection.release();
+    // Connection is released immediately after the transaction commits.
   }
 }
 

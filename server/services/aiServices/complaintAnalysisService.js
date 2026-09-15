@@ -1,5 +1,6 @@
 const analyzeComplaint = require("../../../ai/complaintAnalysis/analyzeComplaint");
 const { createAIAnalysis } = require("../../models/aiAnalysisModel");
+const { updateStatus } = require("../../models/complaintModel");
 
 const ALLOWED_SAFETY_RISKS = ["LOW", "MEDIUM", "HIGH"];
 
@@ -11,10 +12,12 @@ function validateAIResult(result) {
   }
 
   const requiredFields = [
+    "isCivicIssue",
     "category",
     "severity",
     "safetyRisk",
     "confidence",
+    "evidenceConflict",
     "department",
     "shortSummary",
     "language",
@@ -32,6 +35,12 @@ function validateAIResult(result) {
   const severity = Number(result.severity);
   const confidence = Number(result.confidence);
   const safetyRisk = String(result.safetyRisk).toUpperCase();
+
+  if (typeof result.isCivicIssue !== "boolean") {
+    const error = new Error("AI returned an invalid civic issue value.");
+    error.code = "AI_INVALID_RESPONSE";
+    throw error;
+  }
 
   if (!Number.isInteger(severity) || severity < 1 || severity > 10) {
     const error = new Error("AI returned an invalid severity.");
@@ -52,10 +61,14 @@ function validateAIResult(result) {
   }
 
   return {
+    isCivicIssue: result.isCivicIssue,
     category: String(result.category).trim(),
     severity,
     safetyRisk,
-    confidence,
+    confidence: result.evidenceConflict
+      ? Math.min(confidence, 0.7)
+      : confidence,
+    evidenceConflict: result.evidenceConflict,
     department: String(result.department).trim(),
     shortSummary: String(result.shortSummary).trim(),
     language: String(result.language).trim(),
@@ -63,15 +76,25 @@ function validateAIResult(result) {
   };
 }
 
-async function analyzeAndStoreComplaint({ complaintId, complaintText }) {
-  if (!complaintText || !complaintText.trim()) {
-    return null;
+async function analyzeAndStoreComplaint({
+  complaintId,
+  complaintText,
+  imageUrl,
+  voiceText,
+}) {
+  if (!imageUrl) {
+    throw new Error("Image URL is required for complaint analysis.");
   }
 
   let aiResult;
 
   try {
-    aiResult = await analyzeComplaint(complaintText);
+    aiResult = await analyzeComplaint({
+      complaintText,
+      imageUrl,
+      voiceText,
+    });
+    console.log("AI RESULT:", JSON.stringify(aiResult, null, 2));
   } catch (error) {
     const aiError = new Error(error.message || "Complaint analysis failed.");
     aiError.statusCode = 502;
@@ -81,7 +104,18 @@ async function analyzeAndStoreComplaint({ complaintId, complaintText }) {
 
   const validatedResult = validateAIResult(aiResult);
 
-  return createAIAnalysis({
+  if (!validatedResult.isCivicIssue) {
+    await updateStatus(complaintId, "REJECTED_NOT_CIVIC");
+
+    const error = new Error(
+      "The submitted evidence does not appear to show a civic issue.",
+    );
+    error.statusCode = 422;
+    error.code = "NOT_CIVIC_ISSUE";
+    throw error;
+  }
+
+  const aiAnalysis = await createAIAnalysis({
     complaint_id: complaintId,
     category: validatedResult.category,
     severity: validatedResult.severity,
@@ -92,6 +126,11 @@ async function analyzeAndStoreComplaint({ complaintId, complaintText }) {
     language: validatedResult.language,
     english_translation: validatedResult.englishTranslation,
   });
+
+  return {
+    ...aiAnalysis,
+    evidenceConflict: validatedResult.evidenceConflict,
+  };
 }
 
 module.exports = {

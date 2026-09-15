@@ -1,100 +1,50 @@
 const Groq = require("groq-sdk");
-const fs = require("fs");
-const path = require("path");
-
 const imagePrompt = require("./imagePrompt");
 
 const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
+  apiKey: process.env.GROQ_API_KEY,
 });
 
-function getMimeType(imagePath) {
+async function analyzeImage(imageUrl) {
+  if (!imageUrl) {
+    throw new Error("Image URL is required.");
+  }
 
-    const extension =
-        path.extname(imagePath).toLowerCase();
+  const completion = await groq.chat.completions.create({
+    model: process.env.GROQ_VISION_MODEL,
 
-    if (extension === ".png") {
-        return "image/png";
-    }
+    temperature: 0.2,
 
-    if (extension === ".webp") {
-        return "image/webp";
-    }
+    reasoning_effort: "none",
 
-    if (extension === ".jpg" || extension === ".jpeg") {
-        return "image/jpeg";
-    }
+    max_completion_tokens: 400,
 
-    throw new Error(
-        "Unsupported image format. Use JPG, JPEG, PNG or WEBP."
-    );
-}
+    response_format: {
+      type: "json_object",
+    },
 
-async function analyzeImage(imagePath) {
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: imagePrompt,
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageUrl,
+            },
+          },
+        ],
+      },
+    ],
+  });
 
-    if (!imagePath) {
-        throw new Error("Image path is required.");
-    }
+  const result = completion.choices[0].message.content;
 
-    if (!fs.existsSync(imagePath)) {
-        throw new Error("Image file not found.");
-    }
-
-    const imageBuffer =
-        fs.readFileSync(imagePath);
-
-    if (imageBuffer.length === 0) {
-        throw new Error("Image file is empty.");
-    }
-
-    const mimeType =
-        getMimeType(imagePath);
-
-    const base64Image =
-        imageBuffer.toString("base64");
-
-    const imageDataUrl =
-        `data:${mimeType};base64,${base64Image}`;
-
-   const completion =
-    await groq.chat.completions.create({
-
-        model:
-            process.env.GROQ_VISION_MODEL,
-
-        temperature: 0.2,
-
-        reasoning_effort: "none",
-
-        max_completion_tokens: 400,
-
-        response_format: {
-            type: "json_object"
-        },
-
-        messages: [
-            {
-                role: "user",
-
-                content: [
-                    {
-                        type: "text",
-                        text: imagePrompt
-                    },
-                    {
-                        type: "image_url",
-                        image_url: {
-                            url: imageDataUrl
-                        }
-                    }
-                ]
-            }
-        ]
-    });
-    const result =
-        completion.choices[0].message.content;
-
-    return JSON.parse(result);
+  return JSON.parse(result);
 }
 
 module.exports = analyzeImage;

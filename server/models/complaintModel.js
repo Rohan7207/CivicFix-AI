@@ -74,8 +74,22 @@ async function findAllForUser(
   return rows;
 }
 
+async function updateStatus(complaintId, status, connection = pool) {
+  const [result] = await connection.execute(
+    "UPDATE complaints SET status = ? WHERE id = ?",
+    [status, complaintId],
+  );
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return findById(complaintId, connection);
+}
+
 module.exports = {
   createComplaint,
   findById,
   findAllForUser,
+  updateStatus,
 };

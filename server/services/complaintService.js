@@ -162,7 +162,13 @@ async function createComplaintRecord({ user, body, files }) {
       complaintText: payload.description,
       imageUrl: fileUploads.photo.url,
       voiceText,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
     });
+
+    complaint.master_issue_id = aiAnalysis.masterIssue?.masterIssue?.id || null;
+
+    complaint.status = "REPORTED";
 
     return {
       complaint,

@@ -1,6 +1,7 @@
 const analyzeComplaint = require("../../../ai/complaintAnalysis/analyzeComplaint");
 const { createAIAnalysis } = require("../../models/aiAnalysisModel");
 const { updateStatus } = require("../../models/complaintModel");
+const { attachOrCreateMasterIssue } = require("../masterIssueService");
 
 const ALLOWED_SAFETY_RISKS = ["LOW", "MEDIUM", "HIGH"];
 
@@ -81,6 +82,8 @@ async function analyzeAndStoreComplaint({
   complaintText,
   imageUrl,
   voiceText,
+  latitude,
+  longitude,
 }) {
   if (!imageUrl) {
     throw new Error("Image URL is required for complaint analysis.");
@@ -127,9 +130,23 @@ async function analyzeAndStoreComplaint({
     english_translation: validatedResult.englishTranslation,
   });
 
+  const masterIssueResult = await attachOrCreateMasterIssue({
+    complaintId,
+    category: validatedResult.category,
+    department: validatedResult.department,
+    latitude,
+    longitude,
+    title: validatedResult.shortSummary,
+    summary: validatedResult.englishTranslation,
+    severity: validatedResult.severity,
+  });
+
+  await updateStatus(complaintId, "REPORTED");
+
   return {
     ...aiAnalysis,
     evidenceConflict: validatedResult.evidenceConflict,
+    masterIssue: masterIssueResult,
   };
 }
 

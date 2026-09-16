@@ -142,6 +142,73 @@ async function updateById(id, fields, connection = pool) {
   return findById(id, connection);
 }
 
+async function findCandidateMasterIssues({
+  category,
+  latitude,
+  longitude,
+  radiusKm = 2,
+}) {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT
+      mi.*,
+      c.latitude AS complaint_latitude,
+      c.longitude AS complaint_longitude,
+      aa.short_summary AS ai_summary,
+      aa.category AS ai_category,
+      aa.severity AS ai_severity
+    FROM master_issues mi
+    JOIN complaints c
+      ON c.master_issue_id = mi.id
+    JOIN ai_analysis aa
+      ON aa.complaint_id = c.id
+    WHERE mi.is_active = 1
+      AND aa.category = ?
+      AND c.latitude IS NOT NULL
+      AND c.longitude IS NOT NULL
+      AND (
+        6371 * ACOS(
+          LEAST(
+            1,
+            GREATEST(
+              -1,
+              COS(RADIANS(?))
+              * COS(RADIANS(c.latitude))
+              * COS(RADIANS(c.longitude) - RADIANS(?))
+              + SIN(RADIANS(?))
+              * SIN(RADIANS(c.latitude))
+            )
+          )
+        )
+      ) <= ?
+    ORDER BY mi.created_at DESC
+    `,
+    [category, latitude, longitude, latitude, radiusKm],
+  );
+
+  return rows;
+}
+
+async function findDepartmentByCode(code, connection = pool) {
+  const [rows] = await connection.execute(
+    "SELECT * FROM departments WHERE code = ?",
+    [code],
+  );
+
+  return rows[0] || null;
+}
+
+async function updateComplaintMasterIssue(
+  complaintId,
+  masterIssueId,
+  connection = pool,
+) {
+  await connection.execute(
+    "UPDATE complaints SET master_issue_id = ? WHERE id = ?",
+    [masterIssueId, complaintId],
+  );
+}
+
 module.exports = {
   createMasterIssue,
   findById,
@@ -151,4 +218,7 @@ module.exports = {
   findAll,
   findComplaintsForMasterIssue,
   updateById,
+  findCandidateMasterIssues,
+  findDepartmentByCode,
+  updateComplaintMasterIssue,
 };

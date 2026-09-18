@@ -12,6 +12,13 @@ function respondWithError(res, statusCode, code, message) {
 
 async function createComplaint(req, res) {
   try {
+    if (req.user.role !== "CITIZEN") {
+      const error = new Error("Only citizens can create complaints.");
+      error.statusCode = 403;
+      error.code = "COMPLAINT_CREATION_FORBIDDEN";
+      throw error;
+    }
+
     const result = await complaintService.createComplaintRecord({
       user: req.user,
       body: req.body,
@@ -84,8 +91,26 @@ async function getComplaintById(req, res) {
   }
 }
 
+async function verifyComplaint(req, res, next) {
+  try {
+    const result = await complaintService.verifyComplaint({
+      complaintId: Number(req.params.id),
+      citizenId: req.user.id,
+      resolved: req.body.resolved,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createComplaint,
   listComplaints,
   getComplaintById,
+  verifyComplaint,
 };

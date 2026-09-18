@@ -1,12 +1,13 @@
-const express = require('express');
-const multer = require('multer');
+const express = require("express");
+const multer = require("multer");
 
-const { authenticate } = require('../middleware/auth');
+const { authenticate } = require("../middleware/auth");
 const {
   createComplaint,
   listComplaints,
   getComplaintById,
-} = require('../controllers/complaintController');
+  verifyComplaint,
+} = require("../controllers/complaintController");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -18,15 +19,16 @@ const upload = multer({
 const router = express.Router();
 
 router.post(
-  '/',
+  "/",
   authenticate,
   upload.fields([
-    { name: 'photo', maxCount: 1 },
-    { name: 'voice', maxCount: 1 },
+    { name: "photo", maxCount: 1 },
+    { name: "voice", maxCount: 1 },
   ]),
   createComplaint,
 );
-router.get('/', authenticate, listComplaints);
-router.get('/:id', authenticate, getComplaintById);
+router.get("/", authenticate, listComplaints);
+router.post("/:id/verify", authenticate, verifyComplaint);
+router.get("/:id", authenticate, getComplaintById);
 
 module.exports = router;

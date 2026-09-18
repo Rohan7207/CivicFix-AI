@@ -12,6 +12,7 @@ const {
   updateById,
   findCandidateMasterIssues,
   updateComplaintMasterIssue,
+  updateStatus,
 } = require("../models/masterIssueModel");
 
 const {
@@ -28,6 +29,20 @@ const DEPARTMENT_CODE_MAP = {
   "Water Supply": "WATER",
   Drainage: "DRAINAGE",
   "Public Safety": "SAFETY",
+};
+
+const ALLOWED_MASTER_ISSUE_STATUSES = [
+  "REPORTED",
+  "IN_PROGRESS",
+  "FIXED",
+  "REOPENED",
+];
+
+const allowedTransitions = {
+  REPORTED: ["IN_PROGRESS"],
+  IN_PROGRESS: ["FIXED"],
+  FIXED: [],
+  REOPENED: ["IN_PROGRESS"],
 };
 
 function parseMasterIssueId(rawId) {
@@ -96,6 +111,10 @@ async function createMasterIssueFromComplaint({
   title,
   summary,
   severity,
+  priorityScore,
+  priorityLevel,
+  evidenceScore,
+  evidenceLevel,
 }) {
   const departmentCode = getDepartmentCode(department, category);
 
@@ -126,6 +145,10 @@ async function createMasterIssueFromComplaint({
       title: title.slice(0, 255),
       description: summary,
       severity: normalizeSeverity(severity),
+      priority_score: priorityScore,
+      priority_level: priorityLevel,
+      evidence_score: evidenceScore,
+      evidence_level: evidenceLevel,
       is_active: true,
     },
     pool,
@@ -282,6 +305,36 @@ async function updateMasterIssueById({ masterIssueId, body }) {
   };
 }
 
+async function updateMasterIssueStatus(masterIssueId, status) {
+  const id = parseMasterIssueId(masterIssueId);
+
+  if (!ALLOWED_MASTER_ISSUE_STATUSES.includes(status)) {
+    const error = new Error("Invalid master issue status");
+    error.statusCode = 400;
+    error.code = "INVALID_STATUS";
+    throw error;
+  }
+
+  const masterIssue = await findById(id, pool);
+
+  if (!masterIssue) {
+    throw buildNotFoundError();
+  }
+
+  if (!allowedTransitions[masterIssue.status]?.includes(status)) {
+    const error = new Error(
+      `Invalid status transition from ${masterIssue.status} to ${status}.`,
+    );
+    error.statusCode = 400;
+    error.code = "INVALID_STATUS_TRANSITION";
+    throw error;
+  }
+
+  const updatedIssue = await updateStatus(id, status);
+
+  return updatedIssue;
+}
+
 async function attachOrCreateMasterIssue({
   complaintId,
   category,
@@ -291,6 +344,10 @@ async function attachOrCreateMasterIssue({
   title,
   summary,
   severity,
+  priorityScore,
+  priorityLevel,
+  evidenceScore,
+  evidenceLevel,
 }) {
   const candidates = await findCandidateMasterIssues({
     category,
@@ -308,6 +365,10 @@ async function attachOrCreateMasterIssue({
       title,
       summary,
       severity,
+      priorityScore,
+      priorityLevel,
+      evidenceScore,
+      evidenceLevel,
     });
 
     return {
@@ -340,6 +401,16 @@ async function attachOrCreateMasterIssue({
 
     if (fusionResult && fusionResult.isSameIssue === true) {
       await updateComplaintMasterIssue(complaintId, candidate.id, pool);
+      const updatedMasterIssue = await updateById(
+        candidate.id,
+        {
+          priority_score: priorityScore,
+          priority_level: priorityLevel,
+          evidence_score: evidenceScore,
+          evidence_level: evidenceLevel,
+        },
+        pool,
+      );
 
       const complaintCount = await countComplaintsByMasterIssueId(
         candidate.id,
@@ -348,7 +419,7 @@ async function attachOrCreateMasterIssue({
 
       return {
         action: "MERGED",
-        masterIssue: candidate,
+        masterIssue: updatedMasterIssue,
         complaintCount,
         fusion: fusionResult,
       };
@@ -358,12 +429,16 @@ async function attachOrCreateMasterIssue({
   // Candidates existed, but none represented the same issue.
   const masterIssue = await createMasterIssueFromComplaint({
     complaintId,
+    category,
     department,
     title,
     summary,
     severity,
+    priorityScore,
+    priorityLevel,
+    evidenceScore,
+    evidenceLevel,
   });
-
   return {
     action: "CREATED",
     masterIssue,
@@ -376,5 +451,6 @@ module.exports = {
   getMasterIssueByIdForAdmin,
   getMasterIssueComplaintsForAdmin,
   updateMasterIssueById,
+  updateMasterIssueStatus,
   attachOrCreateMasterIssue,
 };

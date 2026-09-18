@@ -1,4 +1,4 @@
-const analyzeComplaint = require("../../../ai/complaintAnalysis/analyzeComplaint");
+const processCivicIssue = require("../../../ai/civicAI");
 const { createAIAnalysis } = require("../../models/aiAnalysisModel");
 const { updateStatus } = require("../../models/complaintModel");
 const { attachOrCreateMasterIssue } = require("../masterIssueService");
@@ -85,6 +85,7 @@ async function analyzeAndStoreComplaint({
   latitude,
   longitude,
 }) {
+  // console.log("AI SERVICE IMAGE URL:", imageUrl);
   if (!imageUrl) {
     throw new Error("Image URL is required for complaint analysis.");
   }
@@ -92,20 +93,53 @@ async function analyzeAndStoreComplaint({
   let aiResult;
 
   try {
-    aiResult = await analyzeComplaint({
-      complaintText,
-      imageUrl,
-      voiceText,
+    aiResult = await processCivicIssue({
+      photo: imageUrl,
+      description: complaintText,
+      voice: voiceText,
+      location: {
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+      },
     });
-    console.log("AI RESULT:", JSON.stringify(aiResult, null, 2));
+    // console.log("AI RESULT:", JSON.stringify(aiResult, null, 2));
   } catch (error) {
+    // console.error("AI PIPELINE ERROR:", error);
     const aiError = new Error(error.message || "Complaint analysis failed.");
     aiError.statusCode = 502;
     aiError.code = "AI_ANALYSIS_FAILED";
     throw aiError;
   }
 
-  const validatedResult = validateAIResult(aiResult);
+  if (!aiResult.success) {
+    await updateStatus(complaintId, "REJECTED_NOT_CIVIC");
+
+    const error = new Error(
+      aiResult.error?.message || "The submitted evidence is not a civic issue.",
+    );
+
+    error.statusCode = 422;
+    error.code = aiResult.error?.code || "AI_ANALYSIS_FAILED";
+
+    throw error;
+  }
+
+  const primaryAnalysis = aiResult.textAnalysis || aiResult.imageAnalysis;
+
+  const validatedResult = validateAIResult({
+    ...primaryAnalysis,
+    evidenceConflict: primaryAnalysis?.evidenceConflict ?? false,
+    department: primaryAnalysis?.department || aiResult.department,
+    shortSummary:
+      primaryAnalysis?.shortSummary ||
+      aiResult.masterIssue?.summary ||
+      aiResult.imageAnalysis?.visualDescription,
+    language: primaryAnalysis?.language || "English",
+    englishTranslation:
+      primaryAnalysis?.englishTranslation ||
+      aiResult.masterIssue?.summary ||
+      aiResult.imageAnalysis?.visualDescription,
+  });
 
   if (!validatedResult.isCivicIssue) {
     await updateStatus(complaintId, "REJECTED_NOT_CIVIC");
@@ -136,9 +170,14 @@ async function analyzeAndStoreComplaint({
     department: validatedResult.department,
     latitude,
     longitude,
-    title: validatedResult.shortSummary,
-    summary: validatedResult.englishTranslation,
+    title: aiResult.masterIssue?.title || validatedResult.shortSummary,
+    summary:
+      aiResult.masterIssue?.summary || validatedResult.englishTranslation,
     severity: validatedResult.severity,
+    priorityScore: aiResult.priority.priorityScore,
+    priorityLevel: aiResult.priority.priorityLevel,
+    evidenceScore: aiResult.evidence.evidenceScore,
+    evidenceLevel: aiResult.evidence.evidenceLevel,
   });
 
   await updateStatus(complaintId, "REPORTED");
@@ -146,6 +185,8 @@ async function analyzeAndStoreComplaint({
   return {
     ...aiAnalysis,
     evidenceConflict: validatedResult.evidenceConflict,
+    evidence: aiResult.evidence,
+    priority: aiResult.priority,
     masterIssue: masterIssueResult,
   };
 }

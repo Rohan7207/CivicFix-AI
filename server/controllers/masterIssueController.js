@@ -1,4 +1,5 @@
 const masterIssueService = require("../services/masterIssueService");
+const { updateMasterIssueStatus } = require("../services/masterIssueService");
 
 function respondWithError(res, statusCode, code, message) {
   return res.status(statusCode).json({
@@ -113,10 +114,29 @@ async function updateMasterIssue(req, res) {
   }
 }
 
+async function updateStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const masterIssue = await updateMasterIssueStatus(id, status);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        masterIssue,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createMasterIssue,
   listMasterIssues,
   getMasterIssueById,
   getMasterIssueComplaints,
   updateMasterIssue,
+  updateStatus,
 };

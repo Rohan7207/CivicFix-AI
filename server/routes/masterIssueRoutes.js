@@ -7,6 +7,7 @@ const {
   getMasterIssueById,
   getMasterIssueComplaints,
   updateMasterIssue,
+  updateStatus,
 } = require("../controllers/masterIssueController");
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get(
   getMasterIssueComplaints,
 );
 router.get("/:id", authenticate, requireAdmin, getMasterIssueById);
+router.patch("/:id/status", authenticate, requireAdmin, updateStatus);
 router.patch("/:id", authenticate, requireAdmin, updateMasterIssue);
 
 module.exports = router;

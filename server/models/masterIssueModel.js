@@ -7,13 +7,40 @@ async function createMasterIssue(
     title,
     description,
     severity = "medium",
+    priority_score,
+    priority_level,
+    evidence_score,
+    evidence_level,
     is_active = true,
   },
   connection = pool,
 ) {
   const [result] = await connection.execute(
-    "INSERT INTO master_issues (department_id, code, title, description, severity, is_active) VALUES (?, ?, ?, ?, ?, ?)",
-    [department_id, code, title, description, severity, is_active ? 1 : 0],
+    `
+  INSERT INTO master_issues (
+    department_id,
+    code,
+    title,
+    description,
+    severity,
+    priority_score,
+    priority_level,
+    evidence_score,
+    evidence_level
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `,
+    [
+      department_id,
+      code,
+      title,
+      description,
+      severity,
+      priority_score,
+      priority_level,
+      evidence_score,
+      evidence_level,
+    ],
   );
 
   return {
@@ -23,6 +50,10 @@ async function createMasterIssue(
     title,
     description,
     severity,
+    priority_score,
+    priority_level,
+    evidence_score,
+    evidence_level,
     is_active: Boolean(is_active),
   };
 }
@@ -124,7 +155,10 @@ async function updateById(id, fields, connection = pool) {
     return null;
   }
 
-  const setClause = entries.map(([key]) => `${key} = ?`).join(", ");
+  const setClause =
+    entries.map(([key]) => `${key} = ?`).join(", ") +
+    ", updated_at = CURRENT_TIMESTAMP";
+
   const values = entries.map(([, value]) => {
     if (value === true || value === false) {
       return value ? 1 : 0;
@@ -209,6 +243,27 @@ async function updateComplaintMasterIssue(
   );
 }
 
+async function updateStatus(masterIssueId, status, connection = pool) {
+  await connection.execute(
+    `UPDATE master_issues
+     SET status = ?
+     WHERE id = ?`,
+    [status, masterIssueId],
+  );
+
+  if (["IN_PROGRESS", "FIXED", "REOPENED"].includes(status)) {
+    await connection.execute(
+      `UPDATE complaints
+       SET status = ?
+       WHERE master_issue_id = ?
+         AND status != 'CLOSED'`,
+      [status, masterIssueId],
+    );
+  }
+
+  return findById(masterIssueId, connection);
+}
+
 module.exports = {
   createMasterIssue,
   findById,
@@ -221,4 +276,5 @@ module.exports = {
   findCandidateMasterIssues,
   findDepartmentByCode,
   updateComplaintMasterIssue,
+  updateStatus,
 };

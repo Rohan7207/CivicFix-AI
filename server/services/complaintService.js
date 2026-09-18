@@ -157,6 +157,7 @@ async function createComplaintRecord({ user, body, files }) {
       voiceText = transcription.transcription;
     }
 
+    // console.log("PHOTO UPLOAD:", fileUploads.photo);
     const aiAnalysis = await analyzeAndStoreComplaint({
       complaintId: complaint.id,
       complaintText: payload.description,
@@ -276,9 +277,85 @@ async function getComplaintByIdForUser({ user, complaintId }) {
   };
 }
 
+async function verifyComplaint({ complaintId, citizenId, resolved }) {
+  const [rows] = await pool.execute(
+    `SELECT
+       c.id,
+       c.citizen_id,
+       c.master_issue_id,
+       mi.status AS master_issue_status
+     FROM complaints c
+     LEFT JOIN master_issues mi
+       ON mi.id = c.master_issue_id
+     WHERE c.id = ?`,
+    [complaintId],
+  );
+
+  const complaint = rows[0];
+
+  if (!complaint) {
+    const error = new Error("Complaint not found.");
+    error.statusCode = 404;
+    error.code = "NOT_FOUND";
+    throw error;
+  }
+
+  if (complaint.citizen_id !== citizenId) {
+    const error = new Error("You can only verify your own complaint.");
+    error.statusCode = 403;
+    error.code = "FORBIDDEN";
+    throw error;
+  }
+
+  // Verification depends on the Master Issue status
+  if (
+    complaint.master_issue_status !== "FIXED" &&
+    complaint.master_issue_status !== "CLOSED"
+  ) {
+    const error = new Error(
+      "Complaint can only be verified after the master issue is marked FIXED.",
+    );
+    error.statusCode = 400;
+    error.code = "INVALID_STATUS";
+    throw error;
+  }
+
+  if (typeof resolved !== "boolean") {
+    const error = new Error("resolved must be a boolean.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  const verificationStatus = resolved ? "CLOSED" : "REOPENED";
+
+  if (!resolved) {
+    await pool.execute(
+      `UPDATE master_issues
+     SET status = 'REOPENED'
+     WHERE id = ?`,
+      [complaint.master_issue_id],
+    );
+  }
+
+  await pool.execute(
+    `UPDATE complaints
+     SET verification_status = ?,
+         status = ?
+     WHERE id = ?`,
+    [verificationStatus, verificationStatus, complaintId],
+  );
+
+  return {
+    complaintId,
+    verificationStatus,
+  };
+}
+
 module.exports = {
   createComplaintRecord,
   listComplaintsForUser,
   getComplaintByIdForUser,
+  verifyComplaint,
   DEFAULT_STATUS,
 };

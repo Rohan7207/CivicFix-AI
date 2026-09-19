@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, logout } = useUser();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-sm">
@@ -24,52 +35,45 @@ function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden items-center gap-8 md:flex">
-          <a
-            href="/#home"
-            className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
-          >
-            Home
-          </a>
-
-          <a
-            href="/#how-it-works"
-            className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
-          >
-            How It Works
-          </a>
-
-          <a
-            href="/#features"
-            className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
-          >
-            Features
-          </a>
-
-          <a
-            href="/#about"
-            className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
-          >
-            About
-          </a>
-        </div>
-
         {/* Desktop Actions */}
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            to="/login"
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Login
-          </Link>
+          {user ? (
+            <>
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
+              >
+                Dashboard
+              </Link>
 
-          <Link
-            to="/signup"
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            Get Started
-          </Link>
+              <span className="text-sm font-semibold text-slate-800">
+                {user.full_name || "Citizen"}
+              </span>
+
+              <button
+                onClick={handleLogout}
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Login
+              </Link>
+
+              <Link
+                to="/signup"
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -116,21 +120,43 @@ function Navbar() {
             >
               About
             </a>
-
             <div className="flex gap-3 border-t border-slate-200 pt-4">
-              <Link
-                to="/login"
-                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-center text-sm font-semibold text-slate-700"
-              >
-                Login
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 rounded-lg border border-slate-300 py-2.5 text-center text-sm font-semibold text-slate-700"
+                  >
+                    Dashboard
+                  </Link>
 
-              <Link
-                to="/signup"
-                className="flex-1 rounded-lg bg-blue-600 py-2.5 text-center text-sm font-semibold text-white"
-              >
-                Get Started
-              </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex-1 rounded-lg bg-slate-100 py-2.5 text-sm font-semibold text-slate-700"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 rounded-lg border border-slate-300 py-2.5 text-center text-sm font-semibold text-slate-700"
+                  >
+                    Login
+                  </Link>
+
+                  <Link
+                    to="/signup"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 rounded-lg bg-blue-600 py-2.5 text-center text-sm font-semibold text-white"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

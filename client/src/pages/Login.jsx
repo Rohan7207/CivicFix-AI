@@ -1,236 +1,223 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useUser();
 
-  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (error) {
+      setError("");
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Backend authentication will be connected here.
-    console.log("Login:", form);
+    setError("");
 
-    navigate("/dashboard");
+    if (!form.email || !form.password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await login(form.email, form.password);
+
+      navigate("/dashboard");
+    } catch (error) {
+      setError(error.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#eef4ff] px-4 py-8 sm:px-6">
+      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center">
+        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-blue-900/5 sm:p-10 md:p-12">
 
-      <div className="grid min-h-screen lg:grid-cols-2">
+          {/* CivicFix AI Logo */}
+          <div className="mb-10 flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-600/20">
+              CF
+            </div>
 
-        {/* LEFT SIDE */}
-        <div className="hidden bg-blue-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                CivicFix <span className="text-blue-600">AI</span>
+              </h1>
 
-          <div>
-            <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white font-bold text-blue-600">
-                CF
+              <p className="mt-0.5 text-xs font-medium tracking-wide text-slate-400">
+                BETTER CITY, TOGETHER
+              </p>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Welcome Back
+            </h2>
+
+            <p className="mt-2 text-base text-slate-500">
+              Sign in to your CivicFix account.
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-semibold text-slate-800"
+              >
+                Email address
+              </label>
+
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-slate-400">
+                  ✉
+                </span>
+
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                  className="w-full rounded-2xl border border-slate-200 bg-blue-50/70 py-4 pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
               </div>
+            </div>
 
-              <div>
-                <h1 className="text-xl font-bold">
-                  CivicFix <span className="text-blue-200">AI</span>
-                </h1>
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-semibold text-slate-800"
+              >
+                Password
+              </label>
 
-                <p className="text-xs text-blue-100">
-                  Better city, together
-                </p>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">
+                  🔒
+                </span>
+
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  className="w-full rounded-2xl border border-slate-200 bg-blue-50/70 py-4 pl-12 pr-20 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500 transition hover:text-blue-600"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
               </div>
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center">
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+
+                <span className="text-sm text-slate-600">
+                  Remember me
+                </span>
+              </label>
+            </div>
+
+            {/* Sign In */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="group flex w-full items-center justify-center rounded-2xl bg-blue-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <span className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Signing In...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Signup */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-500">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="font-semibold text-blue-600 transition hover:text-blue-700"
+              >
+                Create Account
+              </Link>
+            </p>
+          </div>
+
+          {/* Back Home */}
+          <div className="mt-6 text-center">
+            <Link
+              to="/"
+              className="text-sm font-medium text-slate-400 transition hover:text-blue-600"
+            >
+              ← Back to Home
             </Link>
           </div>
 
-          <div className="max-w-lg">
-
-            <div className="mb-6 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-medium">
-              Welcome back
-            </div>
-
-            <h2 className="text-4xl font-bold leading-tight">
-              Help make your community a better place.
-            </h2>
-
-            <p className="mt-5 leading-7 text-blue-100">
-              Sign in to report civic problems, track complaints, and stay
-              connected with your community.
-            </p>
-
-            <div className="mt-10 grid grid-cols-3 gap-4">
-
-              <div className="rounded-xl bg-white/10 p-4">
-                <p className="text-2xl font-bold">10K+</p>
-                <p className="mt-1 text-xs text-blue-100">Reports</p>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-4">
-                <p className="text-2xl font-bold">95%</p>
-                <p className="mt-1 text-xs text-blue-100">Resolved</p>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-4">
-                <p className="text-2xl font-bold">24/7</p>
-                <p className="mt-1 text-xs text-blue-100">Active</p>
-              </div>
-
-            </div>
-          </div>
-
-          <p className="text-sm text-blue-100">
-            © 2026 CivicFix AI
-          </p>
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div className="flex items-center justify-center px-6 py-12">
-
-          <div className="w-full max-w-md">
-
-            <div className="mb-8 lg:hidden">
-              <Link to="/" className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-bold text-white">
-                  CF
-                </div>
-
-                <h1 className="text-lg font-bold">
-                  CivicFix <span className="text-blue-600">AI</span>
-                </h1>
-              </Link>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9">
-
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  Welcome back
-                </h2>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Sign in to your CivicFix account.
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-
-                {/* EMAIL */}
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Email address
-                  </label>
-
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-
-                {/* PASSWORD */}
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-slate-700">
-                      Password
-                    </label>
-
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={form.password}
-                      onChange={handleChange}
-                      placeholder="Enter your password"
-                      required
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3 pr-16 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700"
-                    >
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* REMEMBER */}
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                  />
-                  Remember me
-                </label>
-
-                {/* BUTTON */}
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-blue-600 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                >
-                  Sign In
-                </button>
-
-              </form>
-
-              <div className="my-7 flex items-center gap-4">
-                <div className="h-px flex-1 bg-slate-200"></div>
-                <span className="text-xs text-slate-400">OR</span>
-                <div className="h-px flex-1 bg-slate-200"></div>
-              </div>
-
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                <span className="font-bold">G</span>
-                Continue with Google
-              </button>
-
-              <p className="mt-7 text-center text-sm text-slate-500">
-                Don't have an account?{" "}
-                <Link
-                  to="/signup"
-                  className="font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  Create one
-                </Link>
-              </p>
-
-            </div>
-
-            <div className="mt-6 text-center">
-              <Link
-                to="/"
-                className="text-sm font-medium text-slate-500 hover:text-blue-600"
-              >
-                ← Back to home
-              </Link>
-            </div>
-
-          </div>
         </div>
       </div>
     </div>

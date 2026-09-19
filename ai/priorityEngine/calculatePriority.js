@@ -1,13 +1,12 @@
+const {
+  assertPriorityInput,
+  assertPriorityResult,
+} = require("../validation/aiSchemas");
+
 function calculatePriority(issue) {
-  // --------------------------------
-  // 1. Severity Score — 30 points
-  // --------------------------------
+  assertPriorityInput(issue);
 
   const severityScore = (issue.severity / 10) * 30;
-
-  // --------------------------------
-  // 2. Safety Risk Score — 25 points
-  // --------------------------------
 
   let safetyScore = 0;
 
@@ -19,48 +18,22 @@ function calculatePriority(issue) {
     safetyScore = 5;
   }
 
-  // --------------------------------
-  // 3. Report Count Score — 15 points
-  // --------------------------------
-
   const reportScore = Math.min(issue.reportCount / 7, 1) * 15;
-
-  // --------------------------------
-  // 4. Important Location Score — 10 points
-  // --------------------------------
-
   const locationScore = issue.importantLocation === "YES" ? 10 : 0;
-
-  // --------------------------------
-  // 5. Duration Score — 10 points
-  // --------------------------------
-
   const durationScore = Math.min(issue.durationDays / 7, 1) * 10;
-
-  // --------------------------------
-  // 6. AI Confidence Score — 10 points
-  // --------------------------------
-
   const confidenceScore = issue.confidence * 10;
 
-  // --------------------------------
-  // Final Priority Score
-  // --------------------------------
-
-  let priorityScore =
-    severityScore +
-    safetyScore +
-    reportScore +
-    locationScore +
-    durationScore +
-    confidenceScore;
-
-  // Keep score between 0 and 100
-  priorityScore = Math.round(Math.min(priorityScore, 100));
-
-  // --------------------------------
-  // Priority Level
-  // --------------------------------
+  const priorityScore = Math.round(
+    Math.min(
+      severityScore +
+        safetyScore +
+        reportScore +
+        locationScore +
+        durationScore +
+        confidenceScore,
+      100,
+    ),
+  );
 
   let priorityLevel;
 
@@ -73,10 +46,6 @@ function calculatePriority(issue) {
   } else {
     priorityLevel = "LOW";
   }
-
-  // --------------------------------
-  // Explainable AI Reasons
-  // --------------------------------
 
   const reasons = [];
 
@@ -106,28 +75,22 @@ function calculatePriority(issue) {
     reasons.push("High AI evidence confidence");
   }
 
-  return {
+  const result = {
     priorityScore,
-
     priorityLevel,
-
     explanation:
       reasons.length > 0 ? reasons.join(". ") + "." : "Low available evidence.",
-
     breakdown: {
       severityScore: Math.round(severityScore),
-
       safetyScore,
-
       reportScore: Math.round(reportScore),
-
       locationScore,
-
       durationScore: Math.round(durationScore),
-
       confidenceScore: Math.round(confidenceScore),
     },
   };
+
+  return assertPriorityResult(result);
 }
 
 module.exports = calculatePriority;

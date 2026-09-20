@@ -223,8 +223,26 @@ async function listComplaintsForUser({
     throw error;
   }
 
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
+  if (!Number.isInteger(Number(page)) || Number(page) < 1) {
+    const error = new Error("Page must be a positive integer.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  if (
+    !Number.isInteger(Number(limit)) ||
+    Number(limit) < 1 ||
+    Number(limit) > 100
+  ) {
+    const error = new Error("Limit must be an integer between 1 and 100.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  const safePage = Number(page);
+  const safeLimit = Number(limit);
   const offset = (safePage - 1) * safeLimit;
 
   const complaints = await findAllForUser(
@@ -252,6 +270,15 @@ async function listComplaintsForUser({
 }
 
 async function getComplaintByIdForUser({ user, complaintId }) {
+  if (!Number.isInteger(Number(complaintId)) || Number(complaintId) < 1) {
+    const error = new Error("Complaint ID must be a positive integer.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  complaintId = Number(complaintId);
+
   const role = normalizeUserRoleAllowed(user);
   if (role !== "CITIZEN" && role !== "ADMIN") {
     const error = new Error("You are not authorized to view this complaint.");
@@ -278,6 +305,15 @@ async function getComplaintByIdForUser({ user, complaintId }) {
 }
 
 async function verifyComplaint({ complaintId, citizenId, resolved }) {
+  if (!Number.isInteger(Number(complaintId)) || Number(complaintId) < 1) {
+    const error = new Error("Complaint ID must be a positive integer.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  complaintId = Number(complaintId);
+
   const [rows] = await pool.execute(
     `SELECT
        c.id,

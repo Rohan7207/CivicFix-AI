@@ -27,6 +27,41 @@ router.post(
   ]),
   createComplaint,
 );
+
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "FILE_TOO_LARGE",
+          message: "Uploaded file exceeds the allowed size limit.",
+        },
+      });
+    }
+
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "UNEXPECTED_FILE",
+          message: "Unexpected file field.",
+        },
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "FILE_UPLOAD_ERROR",
+        message: err.message,
+      },
+    });
+  }
+
+  next(err);
+});
+
 router.get("/", authenticate, listComplaints);
 router.post("/:id/verify", authenticate, verifyComplaint);
 router.get("/:id", authenticate, getComplaintById);

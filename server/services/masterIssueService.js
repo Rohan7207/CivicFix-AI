@@ -202,8 +202,38 @@ async function listMasterIssuesForAdmin({
   limit = 20,
   department_id = null,
 }) {
-  const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
+  if (
+    department_id !== null &&
+    (!Number.isInteger(Number(department_id)) || Number(department_id) < 1)
+  ) {
+    const error = new Error("Department ID must be a positive integer.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  department_id = department_id === null ? null : Number(department_id);
+
+  if (!Number.isInteger(Number(page)) || Number(page) < 1) {
+    const error = new Error("Page must be a positive integer.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  if (
+    !Number.isInteger(Number(limit)) ||
+    Number(limit) < 1 ||
+    Number(limit) > 100
+  ) {
+    const error = new Error("Limit must be an integer between 1 and 100.");
+    error.statusCode = 400;
+    error.code = "VALIDATION_ERROR";
+    throw error;
+  }
+
+  const safePage = Number(page);
+  const safeLimit = Number(limit);
 
   const offset = (safePage - 1) * safeLimit;
 

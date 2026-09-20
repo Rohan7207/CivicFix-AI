@@ -1,5 +1,6 @@
 const { pool } = require("../config/database");
 const {
+  analyzeComplaint,
   analyzeAndStoreComplaint,
 } = require("./aiServices/complaintAnalysisService");
 
@@ -64,6 +65,7 @@ async function uploadComplaintFiles(payload) {
 
 async function createComplaintRecord({ user, body, files }) {
   const role = normalizeUserRoleAllowed(user);
+
   if (role !== "CITIZEN") {
     const error = new Error("Only citizens can create complaints.");
     error.statusCode = 403;
@@ -72,6 +74,7 @@ async function createComplaintRecord({ user, body, files }) {
   }
 
   const validation = validateComplaintPayload({ body, files });
+
   if (!validation.valid) {
     const error = new Error(validation.error.message);
     error.statusCode = 400;
@@ -82,6 +85,7 @@ async function createComplaintRecord({ user, body, files }) {
   const payload = validation.data;
 
   let fileUploads;
+
   try {
     fileUploads = await uploadComplaintFiles(payload);
   } catch (error) {
@@ -91,6 +95,61 @@ async function createComplaintRecord({ user, body, files }) {
     throw uploadError;
   }
 
+  let voiceText = null;
+  let aiResult;
+  let validatedResult;
+
+  // --------------------------------------------------
+  // AI validation BEFORE opening DB transaction
+  // --------------------------------------------------
+  try {
+    if (fileUploads.voice) {
+      const transcription = await transcribeVoice(
+        payload.voice.buffer,
+        payload.voice.originalname,
+      );
+
+      voiceText = transcription.transcription;
+    }
+
+    const analysis = await analyzeComplaint({
+      complaintText: payload.description,
+      imageUrl: fileUploads.photo.url,
+      voiceText,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+    });
+
+    aiResult = analysis.aiResult;
+    validatedResult = analysis.validatedResult;
+  } catch (error) {
+    const uploadedFileIds = [];
+
+    if (fileUploads?.photo?.fileId) {
+      uploadedFileIds.push(fileUploads.photo.fileId);
+    }
+
+    if (fileUploads?.voice?.fileId) {
+      uploadedFileIds.push(fileUploads.voice.fileId);
+    }
+
+    for (const fileId of uploadedFileIds) {
+      try {
+        await deleteFileFromImageKit(fileId);
+      } catch (cleanupError) {
+        console.warn(
+          "ImageKit cleanup failed after AI validation error:",
+          cleanupError.message,
+        );
+      }
+    }
+
+    throw error;
+  }
+
+  // --------------------------------------------------
+  // Only DB work from here
+  // --------------------------------------------------
   const connection = await pool.getConnection();
 
   try {
@@ -143,33 +202,20 @@ async function createComplaintRecord({ user, body, files }) {
       );
     }
 
-    await connection.commit();
-
-    connection.release();
-
-    let voiceText = null;
-
-    if (fileUploads.voice) {
-      const transcription = await transcribeVoice(
-        payload.voice.buffer,
-        payload.voice.originalname,
-      );
-      voiceText = transcription.transcription;
-    }
-
-    // console.log("PHOTO UPLOAD:", fileUploads.photo);
     const aiAnalysis = await analyzeAndStoreComplaint({
       complaintId: complaint.id,
-      complaintText: payload.description,
-      imageUrl: fileUploads.photo.url,
-      voiceText,
       latitude: payload.latitude,
       longitude: payload.longitude,
+      aiResult,
+      validatedResult,
+      db: connection,
     });
 
     complaint.master_issue_id = aiAnalysis.masterIssue?.masterIssue?.id || null;
 
     complaint.status = "REPORTED";
+
+    await connection.commit();
 
     return {
       complaint,
@@ -180,9 +226,11 @@ async function createComplaintRecord({ user, body, files }) {
     await connection.rollback();
 
     const uploadedFileIds = [];
+
     if (fileUploads?.photo?.fileId) {
       uploadedFileIds.push(fileUploads.photo.fileId);
     }
+
     if (fileUploads?.voice?.fileId) {
       uploadedFileIds.push(fileUploads.voice.fileId);
     }
@@ -201,11 +249,13 @@ async function createComplaintRecord({ user, body, files }) {
     const wrappedError = new Error(
       error.message || "Complaint creation failed.",
     );
+
     wrappedError.statusCode = error.statusCode || 500;
     wrappedError.code = error.code || "INTERNAL_SERVER_ERROR";
+
     throw wrappedError;
   } finally {
-    // Connection is released immediately after the transaction commits.
+    connection.release();
   }
 }
 

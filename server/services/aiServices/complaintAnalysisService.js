@@ -109,17 +109,18 @@ function validateAIResult(result) {
   };
 }
 
-async function analyzeAndStoreComplaint({
-  complaintId,
+async function analyzeComplaint({
   complaintText,
   imageUrl,
   voiceText,
   latitude,
   longitude,
 }) {
-  // console.log("AI SERVICE IMAGE URL:", imageUrl);
   if (!imageUrl) {
-    throw new Error("Image URL is required for complaint analysis.");
+    const error = new Error("Image URL is required for complaint analysis.");
+    error.statusCode = 400;
+    error.code = "AI_INVALID_INPUT";
+    throw error;
   }
 
   let aiResult;
@@ -134,9 +135,7 @@ async function analyzeAndStoreComplaint({
         longitude: Number(longitude),
       },
     });
-    // console.log("AI RESULT:", JSON.stringify(aiResult, null, 2));
   } catch (error) {
-    // console.error("AI PIPELINE ERROR:", error);
     const aiError = new Error(error.message || "Complaint analysis failed.");
     aiError.statusCode = 502;
     aiError.code = "AI_ANALYSIS_FAILED";
@@ -150,16 +149,26 @@ async function analyzeAndStoreComplaint({
     throw error;
   }
 
-  if (!aiResult.success) {
-    await updateStatus(complaintId, "REJECTED_NOT_CIVIC");
+  // AI successfully detected that the supplied evidence
+  // contains multiple different civic issues.
+  if (aiResult.issueStatus === "MULTIPLE_ISSUES_DETECTED") {
+    const error = new Error(
+      aiResult.message ||
+        "The supplied evidence describes different civic issues. Please submit evidence for one issue only.",
+    );
 
+    error.statusCode = 422;
+    error.code = "MULTIPLE_ISSUES_DETECTED";
+    throw error;
+  }
+
+  if (!aiResult.success) {
     const error = new Error(
       aiResult.error?.message || "The submitted evidence is not a civic issue.",
     );
 
     error.statusCode = 422;
     error.code = aiResult.error?.code || "AI_ANALYSIS_FAILED";
-
     throw error;
   }
 
@@ -181,8 +190,6 @@ async function analyzeAndStoreComplaint({
   });
 
   if (!validatedResult.isCivicIssue) {
-    await updateStatus(complaintId, "REJECTED_NOT_CIVIC");
-
     const error = new Error(
       "The submitted evidence does not appear to show a civic issue.",
     );
@@ -191,17 +198,34 @@ async function analyzeAndStoreComplaint({
     throw error;
   }
 
-  const aiAnalysis = await createAIAnalysis({
-    complaint_id: complaintId,
-    category: validatedResult.category,
-    severity: validatedResult.severity,
-    safety_risk: validatedResult.safetyRisk,
-    confidence: validatedResult.confidence,
-    department: validatedResult.department,
-    short_summary: validatedResult.shortSummary,
-    language: validatedResult.language,
-    english_translation: validatedResult.englishTranslation,
-  });
+  return {
+    aiResult,
+    validatedResult,
+  };
+}
+
+async function analyzeAndStoreComplaint({
+  complaintId,
+  latitude,
+  longitude,
+  aiResult,
+  validatedResult,
+  db,
+}) {
+  const aiAnalysis = await createAIAnalysis(
+    {
+      complaint_id: complaintId,
+      category: validatedResult.category,
+      severity: validatedResult.severity,
+      safety_risk: validatedResult.safetyRisk,
+      confidence: validatedResult.confidence,
+      department: validatedResult.department,
+      short_summary: validatedResult.shortSummary,
+      language: validatedResult.language,
+      english_translation: validatedResult.englishTranslation,
+    },
+    db,
+  );
 
   const masterIssueResult = await attachOrCreateMasterIssue({
     complaintId,
@@ -213,13 +237,16 @@ async function analyzeAndStoreComplaint({
     summary:
       aiResult.masterIssue?.summary || validatedResult.englishTranslation,
     severity: validatedResult.severity,
+    safetyRisk: validatedResult.safetyRisk,
+    confidence: validatedResult.confidence,
     priorityScore: aiResult.priority.priorityScore,
     priorityLevel: aiResult.priority.priorityLevel,
     evidenceScore: aiResult.evidence.evidenceScore,
     evidenceLevel: aiResult.evidence.evidenceLevel,
+    db,
   });
 
-  await updateStatus(complaintId, "REPORTED");
+  await updateStatus(complaintId, "REPORTED", db);
 
   return {
     ...aiAnalysis,
@@ -232,4 +259,5 @@ async function analyzeAndStoreComplaint({
 
 module.exports = {
   analyzeAndStoreComplaint,
+  analyzeComplaint,
 };

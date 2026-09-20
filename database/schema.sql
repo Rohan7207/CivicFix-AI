@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS master_issues (
 CREATE TABLE IF NOT EXISTS complaints (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   citizen_id BIGINT UNSIGNED NOT NULL,
-  description TEXT NULL,P
+  description TEXT NULL,
   latitude DECIMAL(9,6) NOT NULL,
   longitude DECIMAL(9,6) NOT NULL,
   address VARCHAR(255) NULL,

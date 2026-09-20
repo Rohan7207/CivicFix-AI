@@ -176,13 +176,11 @@ async function updateById(id, fields, connection = pool) {
   return findById(id, connection);
 }
 
-async function findCandidateMasterIssues({
-  category,
-  latitude,
-  longitude,
-  radiusKm = 2,
-}) {
-  const [rows] = await pool.execute(
+async function findCandidateMasterIssues(
+  { category, latitude, longitude, radiusKm = 2 },
+  db = pool,
+) {
+  const [rows] = await db.execute(
     `
     SELECT DISTINCT
       mi.*,
@@ -190,7 +188,9 @@ async function findCandidateMasterIssues({
       c.longitude AS complaint_longitude,
       aa.short_summary AS ai_summary,
       aa.category AS ai_category,
-      aa.severity AS ai_severity
+      aa.severity AS ai_severity,
+      aa.safety_risk AS ai_safety_risk,
+      aa.confidence AS ai_confidence
     FROM master_issues mi
     JOIN complaints c
       ON c.master_issue_id = mi.id

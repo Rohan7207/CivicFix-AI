@@ -115,6 +115,7 @@ async function createMasterIssueFromComplaint({
   priorityLevel,
   evidenceScore,
   evidenceLevel,
+  db = pool,
 }) {
   const departmentCode = getDepartmentCode(department, category);
 
@@ -127,7 +128,7 @@ async function createMasterIssueFromComplaint({
     throw error;
   }
 
-  const departmentRecord = await findDepartmentByCode(departmentCode, pool);
+  const departmentRecord = await findDepartmentByCode(departmentCode, db);
 
   if (!departmentRecord) {
     const error = new Error(`Department "${departmentCode}" not found.`);
@@ -151,10 +152,10 @@ async function createMasterIssueFromComplaint({
       evidence_level: evidenceLevel,
       is_active: true,
     },
-    pool,
+    db,
   );
 
-  await updateComplaintMasterIssue(complaintId, masterIssue.id, pool);
+  await updateComplaintMasterIssue(complaintId, masterIssue.id, db);
 
   return masterIssue;
 }
@@ -374,17 +375,23 @@ async function attachOrCreateMasterIssue({
   title,
   summary,
   severity,
+  safetyRisk,
+  confidence,
   priorityScore,
   priorityLevel,
   evidenceScore,
   evidenceLevel,
+  db = pool,
 }) {
-  const candidates = await findCandidateMasterIssues({
-    category,
-    latitude,
-    longitude,
-    radiusKm: 2,
-  });
+  const candidates = await findCandidateMasterIssues(
+    {
+      category,
+      latitude,
+      longitude,
+      radiusKm: 2,
+    },
+    db,
+  );
 
   // No nearby same-category Master Issue
   if (!candidates.length) {
@@ -399,6 +406,7 @@ async function attachOrCreateMasterIssue({
       priorityLevel,
       evidenceScore,
       evidenceLevel,
+      db,
     });
 
     return {
@@ -415,6 +423,8 @@ async function attachOrCreateMasterIssue({
         category,
         description: summary || title,
         severity,
+        safetyRisk,
+        confidence,
         source: "NEW_COMPLAINT",
       },
       {
@@ -422,7 +432,9 @@ async function attachOrCreateMasterIssue({
         category: candidate.ai_category,
         description:
           candidate.ai_summary || candidate.description || candidate.title,
-        severity: candidate.ai_severity || candidate.severity,
+        severity: Number(candidate.ai_severity || candidate.severity),
+        safetyRisk: candidate.ai_safety_risk,
+        confidence: Number(candidate.ai_confidence),
         source: `MASTER_ISSUE_${candidate.id}`,
       },
     ];
@@ -430,7 +442,7 @@ async function attachOrCreateMasterIssue({
     const fusionResult = await fuseIssues(reports);
 
     if (fusionResult && fusionResult.isSameIssue === true) {
-      await updateComplaintMasterIssue(complaintId, candidate.id, pool);
+      await updateComplaintMasterIssue(complaintId, candidate.id, db);
       const updatedMasterIssue = await updateById(
         candidate.id,
         {
@@ -439,12 +451,12 @@ async function attachOrCreateMasterIssue({
           evidence_score: evidenceScore,
           evidence_level: evidenceLevel,
         },
-        pool,
+        db,
       );
 
       const complaintCount = await countComplaintsByMasterIssueId(
         candidate.id,
-        pool,
+        db,
       );
 
       return {
@@ -468,6 +480,7 @@ async function attachOrCreateMasterIssue({
     priorityLevel,
     evidenceScore,
     evidenceLevel,
+    db,
   });
   return {
     action: "CREATED",

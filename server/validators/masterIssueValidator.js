@@ -1,11 +1,14 @@
 const VALID_SEVERITIES = new Set(["low", "medium", "high", "critical"]);
+const MAX_CODE_LENGTH = 100;
+const MAX_TITLE_LENGTH = 255;
+const MAX_DESCRIPTION_LENGTH = 1000;
 
 function normalizeString(value) {
-  if (value === null || value === undefined) {
+  if (typeof value !== "string") {
     return "";
   }
 
-  return String(value).trim();
+  return value.trim();
 }
 
 function parseBoolean(value) {
@@ -75,6 +78,36 @@ function validateMasterIssuePayload(payload = {}) {
       error: {
         code: "VALIDATION_ERROR",
         message: "Description is required.",
+      },
+    };
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: `Master issue code must be ${MAX_CODE_LENGTH} characters or fewer.`,
+      },
+    };
+  }
+
+  if (title.length > MAX_TITLE_LENGTH) {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: `Title must be ${MAX_TITLE_LENGTH} characters or fewer.`,
+      },
+    };
+  }
+
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: `Description must be ${MAX_DESCRIPTION_LENGTH} characters or fewer.`,
       },
     };
   }
@@ -172,6 +205,16 @@ function validateMasterIssueUpdatePayload(payload = {}) {
         },
       };
     }
+
+    if (title.length > MAX_TITLE_LENGTH) {
+      return {
+        valid: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: `Title must be ${MAX_TITLE_LENGTH} characters or fewer.`,
+        },
+      };
+    }
     nextPayload.title = title;
   }
 
@@ -183,6 +226,16 @@ function validateMasterIssueUpdatePayload(payload = {}) {
         error: {
           code: "VALIDATION_ERROR",
           message: "Description cannot be empty.",
+        },
+      };
+    }
+
+    if (description.length > MAX_DESCRIPTION_LENGTH) {
+      return {
+        valid: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: `Description must be ${MAX_DESCRIPTION_LENGTH} characters or fewer.`,
         },
       };
     }

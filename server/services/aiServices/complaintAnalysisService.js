@@ -6,7 +6,7 @@ const { attachOrCreateMasterIssue } = require("../masterIssueService");
 const ALLOWED_SAFETY_RISKS = ["LOW", "MEDIUM", "HIGH"];
 
 function validateAIResult(result) {
-  if (!result || typeof result !== "object") {
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
     const error = new Error("Invalid AI analysis response.");
     error.code = "AI_INVALID_RESPONSE";
     throw error;
@@ -33,47 +33,79 @@ function validateAIResult(result) {
     }
   }
 
-  const severity = Number(result.severity);
-  const confidence = Number(result.confidence);
-  const safetyRisk = String(result.safetyRisk).toUpperCase();
-
   if (typeof result.isCivicIssue !== "boolean") {
     const error = new Error("AI returned an invalid civic issue value.");
     error.code = "AI_INVALID_RESPONSE";
     throw error;
   }
 
-  if (!Number.isInteger(severity) || severity < 1 || severity > 10) {
+  if (
+    !Number.isInteger(result.severity) ||
+    result.severity < 1 ||
+    result.severity > 10
+  ) {
     const error = new Error("AI returned an invalid severity.");
     error.code = "AI_INVALID_RESPONSE";
     throw error;
   }
 
-  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+  if (
+    typeof result.confidence !== "number" ||
+    !Number.isFinite(result.confidence) ||
+    result.confidence < 0 ||
+    result.confidence > 1
+  ) {
     const error = new Error("AI returned an invalid confidence.");
     error.code = "AI_INVALID_RESPONSE";
     throw error;
   }
 
-  if (!ALLOWED_SAFETY_RISKS.includes(safetyRisk)) {
+  if (typeof result.evidenceConflict !== "boolean") {
+    const error = new Error("AI returned an invalid evidence conflict value.");
+    error.code = "AI_INVALID_RESPONSE";
+    throw error;
+  }
+
+  if (
+    typeof result.safetyRisk !== "string" ||
+    !ALLOWED_SAFETY_RISKS.includes(result.safetyRisk.toUpperCase())
+  ) {
     const error = new Error("AI returned an invalid safety risk.");
     error.code = "AI_INVALID_RESPONSE";
     throw error;
   }
 
+  const stringFields = [
+    "category",
+    "department",
+    "shortSummary",
+    "language",
+    "englishTranslation",
+  ];
+
+  for (const field of stringFields) {
+    if (typeof result[field] !== "string" || result[field].trim() === "") {
+      const error = new Error(`AI returned an invalid ${field}.`);
+      error.code = "AI_INVALID_RESPONSE";
+      throw error;
+    }
+  }
+
+  const safetyRisk = result.safetyRisk.toUpperCase();
+
   return {
     isCivicIssue: result.isCivicIssue,
-    category: String(result.category).trim(),
-    severity,
+    category: result.category.trim(),
+    severity: result.severity,
     safetyRisk,
     confidence: result.evidenceConflict
-      ? Math.min(confidence, 0.7)
-      : confidence,
+      ? Math.min(result.confidence, 0.7)
+      : result.confidence,
     evidenceConflict: result.evidenceConflict,
-    department: String(result.department).trim(),
-    shortSummary: String(result.shortSummary).trim(),
-    language: String(result.language).trim(),
-    englishTranslation: String(result.englishTranslation).trim(),
+    department: result.department.trim(),
+    shortSummary: result.shortSummary.trim(),
+    language: result.language.trim(),
+    englishTranslation: result.englishTranslation.trim(),
   };
 }
 
@@ -109,6 +141,13 @@ async function analyzeAndStoreComplaint({
     aiError.statusCode = 502;
     aiError.code = "AI_ANALYSIS_FAILED";
     throw aiError;
+  }
+
+  if (!aiResult || typeof aiResult !== "object") {
+    const error = new Error("Invalid AI pipeline response.");
+    error.statusCode = 502;
+    error.code = "AI_INVALID_RESPONSE";
+    throw error;
   }
 
   if (!aiResult.success) {

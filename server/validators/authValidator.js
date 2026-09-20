@@ -1,12 +1,16 @@
 function validateRegistration(payload = {}) {
-  const full_name = String(payload.full_name || "").trim();
-  const email = String(payload.email || "")
-    .trim()
-    .toLowerCase();
-  const password = String(payload.password || "");
-  const role = String(payload.role || "CITIZEN")
-    .trim()
-    .toUpperCase();
+  const full_name =
+    typeof payload.full_name === "string" ? payload.full_name.trim() : "";
+
+  const email =
+    typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+
+  const password = typeof payload.password === "string" ? payload.password : "";
+
+  const role =
+    typeof payload.role === "string"
+      ? payload.role.trim().toUpperCase()
+      : "CITIZEN";
 
   if (!full_name || full_name.length < 2) {
     return {
@@ -41,11 +45,10 @@ function validateRegistration(payload = {}) {
 }
 
 function validateLogin(payload = {}) {
-  const email = String(payload.email || "")
-    .trim()
-    .toLowerCase();
-  const password = String(payload.password || "");
+  const email =
+    typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
 
+  const password = typeof payload.password === "string" ? payload.password : "";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return {
       valid: false,

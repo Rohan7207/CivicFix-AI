@@ -85,7 +85,7 @@ async function getComplaintById(req, res) {
     return respondWithError(
       res,
       error.statusCode || 500,
-      error.code || "INTERNA_SERVER_ERROR",
+      error.code || "INTERNAL_SERVER_ERROR",
       error.message || "Complaint not found or not accessible.",
     );
   }

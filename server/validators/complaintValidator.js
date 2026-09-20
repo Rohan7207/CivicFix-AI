@@ -46,28 +46,14 @@ function getUploadedFile(files, fieldName) {
 
 function validateComplaintPayload({ body = {}, files = [] } = {}) {
   const location = pickLocation(body);
-  const latitude = Number(body.latitude ?? location.latitude);
-  const longitude = Number(body.longitude ?? location.longitude);
-  const description =
-    body.description == null ? null : String(body.description).trim();
-  const address =
-    body.address == null
-      ? location.address == null
-        ? null
-        : String(location.address).trim()
-      : String(body.address).trim();
+  const rawLatitude = body.latitude ?? location.latitude;
+  const rawLongitude = body.longitude ?? location.longitude;
 
-  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
-    return {
-      valid: false,
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "Description must be 1000 characters or fewer.",
-      },
-    };
-  }
-
-  if (Number.isNaN(latitude) || latitude < -90 || latitude > 90) {
+  if (
+    rawLatitude == null ||
+    (typeof rawLatitude !== "string" && typeof rawLatitude !== "number") ||
+    (typeof rawLatitude === "string" && rawLatitude.trim() === "")
+  ) {
     return {
       valid: false,
       error: {
@@ -77,12 +63,68 @@ function validateComplaintPayload({ body = {}, files = [] } = {}) {
     };
   }
 
-  if (Number.isNaN(longitude) || longitude < -180 || longitude > 180) {
+  if (
+    rawLongitude == null ||
+    (typeof rawLongitude !== "string" && typeof rawLongitude !== "number") ||
+    (typeof rawLongitude === "string" && rawLongitude.trim() === "")
+  ) {
     return {
       valid: false,
       error: {
         code: "VALIDATION_ERROR",
         message: "Longitude must be a number between -180 and 180.",
+      },
+    };
+  }
+
+  const latitude = Number(rawLatitude);
+  const longitude = Number(rawLongitude);
+
+  if (body.description != null && typeof body.description !== "string") {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Description must be a string.",
+      },
+    };
+  }
+
+  if (body.address != null && typeof body.address !== "string") {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Address must be a string.",
+      },
+    };
+  }
+
+  if (location.address != null && typeof location.address !== "string") {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Address must be a string.",
+      },
+    };
+  }
+
+  const description = body.description == null ? null : body.description.trim();
+
+  const address =
+    body.address == null
+      ? location.address == null
+        ? null
+        : location.address.trim()
+      : body.address.trim();
+
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    return {
+      valid: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Description must be 1000 characters or fewer.",
       },
     };
   }

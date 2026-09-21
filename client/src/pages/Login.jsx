@@ -12,7 +12,6 @@ function Login() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,24 +41,34 @@ function Login() {
     try {
       setLoading(true);
 
-      await login(form.email, form.password);
+      const user = await login(form.email, form.password);
+      const role = String(user?.role || "").toUpperCase();
 
-      navigate("/dashboard");
+      navigate(role === "ADMIN" ? "/admin" : "/dashboard");
     } catch (error) {
-      setError(error.message || "Login failed. Please try again.");
+      let message = "Unable to sign in. Please try again.";
+
+      if (error?.message === "Failed to fetch") {
+        message = "Unable to connect to the server. Please try again later.";
+      } else if (error?.code === "INVALID_CREDENTIALS") {
+        message = "Invalid email or password.";
+      } else if (error?.message) {
+        message = error.message;
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#eef4ff] px-4 py-8 sm:px-6">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center">
+    <div className="min-h-screen bg-[#eef4ff] px-4 py-6 sm:px-6">
+      <div className="mx-auto flex min-h-screen max-w-xl items-center justify-center">
         <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-blue-900/5 sm:p-10 md:p-12">
-
           {/* CivicFix AI Logo */}
-          <div className="mb-10 flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-600/20">
+          <div className="mb-8 flex items-center gap-4">
+            <div className="flex h-12 w-14 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-600/20">
               CF
             </div>
 
@@ -75,12 +84,12 @@ function Login() {
           </div>
 
           {/* Heading */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
               Welcome Back
             </h2>
 
-            <p className="mt-2 text-base text-slate-500">
+            <p className="mt-2 text-sm text-slate-500">
               Sign in to your CivicFix account.
             </p>
           </div>
@@ -94,7 +103,6 @@ function Login() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-
             {/* Email */}
             <div>
               <label
@@ -157,22 +165,6 @@ function Login() {
               </div>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-
-                <span className="text-sm text-slate-600">
-                  Remember me
-                </span>
-              </label>
-            </div>
-
             {/* Sign In */}
             <button
               type="submit"
@@ -196,7 +188,7 @@ function Login() {
           </form>
 
           {/* Signup */}
-          <div className="mt-8 text-center">
+          <div className="mt-4 text-center">
             <p className="text-sm text-slate-500">
               Don't have an account?{" "}
               <Link
@@ -207,17 +199,6 @@ function Login() {
               </Link>
             </p>
           </div>
-
-          {/* Back Home */}
-          <div className="mt-6 text-center">
-            <Link
-              to="/"
-              className="text-sm font-medium text-slate-400 transition hover:text-blue-600"
-            >
-              ← Back to Home
-            </Link>
-          </div>
-
         </div>
       </div>
     </div>

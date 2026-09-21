@@ -1,29 +1,37 @@
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 async function apiRequest(endpoint, options = {}) {
   const isFormData = options.body instanceof FormData;
+  const headers = { ...(options.headers || {}) };
+
+  if (!isFormData && options.body !== undefined && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(options.headers || {}),
-    },
-
+    headers,
     credentials: "include",
   });
 
-  const data = await response.json().catch(() => ({}));
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = {};
+  }
 
   if (!response.ok) {
-  throw new Error(
-    data.message ||
-      data.error?.message ||
-      data.error ||
-      "Something went wrong"
-  );
-}
+    const message =
+      data?.error?.message || data?.message || "Something went wrong.";
+    const code = data?.error?.code || data?.code || "REQUEST_FAILED";
+    const error = new Error(message);
+    error.code = code;
+    error.status = response.status;
+    throw error;
+  }
 
   return data;
 }
@@ -34,22 +42,22 @@ export const api = {
       method: "GET",
     }),
 
-post: (endpoint, body) =>
-  apiRequest(endpoint, {
-    method: "POST",
-    body: body instanceof FormData ? body : JSON.stringify(body),
-  }),
+  post: (endpoint, body) =>
+    apiRequest(endpoint, {
+      method: "POST",
+      body: body instanceof FormData ? body : JSON.stringify(body || {}),
+    }),
 
   put: (endpoint, body) =>
     apiRequest(endpoint, {
       method: "PUT",
-      body: JSON.stringify(body),
+      body: JSON.stringify(body || {}),
     }),
 
   patch: (endpoint, body) =>
     apiRequest(endpoint, {
       method: "PATCH",
-      body: JSON.stringify(body),
+      body: JSON.stringify(body || {}),
     }),
 
   delete: (endpoint) =>

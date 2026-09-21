@@ -1,37 +1,41 @@
 import { api } from "./api";
 
+function getUserPayload(response) {
+  if (!response || typeof response !== "object") {
+    return null;
+  }
+
+  if (response.data && typeof response.data === "object") {
+    return response.data.user ?? response.data;
+  }
+
+  return response.user ?? response;
+}
+
+function getErrorFromResponse(response, fallbackMessage) {
+  const error = new Error(
+    response?.error?.message || response?.message || fallbackMessage,
+  );
+  error.code = response?.error?.code || response?.code || "AUTH_ERROR";
+  return error;
+}
+
 export const authService = {
-  /**
-   * Register a new user
-   * @param {string} full_name - User's full name
-   * @param {string} email - User's email
-   * @param {string} password - User's password
-   * @param {string} role - User's role
-   * @returns {Promise<Object>} - User data
-   */
-  async register(full_name, email, password, role = "CITIZEN") {
+  async register(full_name, email, password) {
     const response = await api.post("/api/auth/register", {
       full_name,
       email,
       password,
-      role,
+      role: "CITIZEN",
     });
 
     if (!response.success) {
-      throw new Error(
-        response.message || "Registration failed"
-      );
+      throw getErrorFromResponse(response, "Registration failed.");
     }
 
-    return response.user;
+    return getUserPayload(response);
   },
 
-  /**
-   * Login a user
-   * @param {string} email - User's email
-   * @param {string} password - User's password
-   * @returns {Promise<Object>} - User data
-   */
   async login(email, password) {
     const response = await api.post("/api/auth/login", {
       email,
@@ -39,41 +43,27 @@ export const authService = {
     });
 
     if (!response.success) {
-      throw new Error(
-        response.message || "Login failed"
-      );
+      throw getErrorFromResponse(response, "Login failed.");
     }
 
-    return response.user;
+    return getUserPayload(response);
   },
 
-  /**
-   * Logout the current user
-   * @returns {Promise<void>}
-   */
   async logout() {
     const response = await api.post("/api/auth/logout");
 
     if (!response.success) {
-      throw new Error(
-        response.message || "Logout failed"
-      );
+      throw getErrorFromResponse(response, "Logout failed.");
     }
   },
 
-  /**
-   * Get the current authenticated user
-   * @returns {Promise<Object>} - Current user data
-   */
   async getCurrentUser() {
     const response = await api.get("/api/auth/me");
 
     if (!response.success) {
-      throw new Error(
-        response.message || "Failed to get current user"
-      );
+      throw getErrorFromResponse(response, "Failed to get current user.");
     }
 
-    return response.user;
+    return getUserPayload(response);
   },
 };

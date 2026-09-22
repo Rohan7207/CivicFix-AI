@@ -39,9 +39,23 @@ async function createComplaint(
 
 async function findById(id, connection = pool) {
   const [rows] = await connection.execute(
-    "SELECT * FROM complaints WHERE id = ?",
+    `SELECT
+      c.*,
+      aa.category AS category,
+      mi.priority_level AS priority,
+      COUNT(c2.id) AS similar_complaint_count
+     FROM complaints c
+     LEFT JOIN ai_analysis aa
+       ON aa.complaint_id = c.id
+     LEFT JOIN master_issues mi
+       ON mi.id = c.master_issue_id
+     LEFT JOIN complaints c2
+       ON c2.master_issue_id = c.master_issue_id
+     WHERE c.id = ?
+     GROUP BY c.id`,
     [id],
   );
+
   return rows[0] || null;
 }
 
@@ -49,25 +63,41 @@ async function findAllForUser(
   { user, status = null, limit = 20, offset = 0 },
   connection = pool,
 ) {
-  let query = "SELECT * FROM complaints";
+  let query = `
+    SELECT
+      c.*,
+      aa.category AS category,
+      mi.priority_level AS priority,
+      COUNT(c2.id) AS similar_complaint_count
+    FROM complaints c
+    LEFT JOIN ai_analysis aa
+      ON aa.complaint_id = c.id
+    LEFT JOIN master_issues mi
+      ON mi.id = c.master_issue_id
+    LEFT JOIN complaints c2
+      ON c2.master_issue_id = c.master_issue_id
+  `;
+
   const params = [];
   const role = String(user && user.role ? user.role : "").toUpperCase();
 
   if (role === "CITIZEN") {
-    query += " WHERE citizen_id = ?";
+    query += " WHERE c.citizen_id = ?";
     params.push(user.id);
   }
 
   if (status) {
     if (params.length > 0) {
-      query += " AND status = ?";
+      query += " AND c.status = ?";
     } else {
-      query += " WHERE status = ?";
+      query += " WHERE c.status = ?";
     }
     params.push(status);
   }
 
-  query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+  query += " GROUP BY c.id";
+  query += " ORDER BY c.created_at DESC LIMIT ? OFFSET ?";
+
   params.push(Number(limit), Number(offset));
 
   const [rows] = await connection.execute(query, params);

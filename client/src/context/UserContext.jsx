@@ -11,8 +11,10 @@ export function UserProvider({ children }) {
     try {
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
+      return currentUser;
     } catch (error) {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -33,7 +35,6 @@ export function UserProvider({ children }) {
       fullName,
       email,
       password,
-      "CITIZEN"
     );
 
     setUser(registeredUser);

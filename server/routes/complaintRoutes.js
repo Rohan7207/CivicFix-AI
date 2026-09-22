@@ -1,13 +1,15 @@
 const express = require("express");
 const multer = require("multer");
 
-const { authenticate } = require("../middleware/auth");
+const { authenticate, requireAdmin } = require("../middleware/auth");
 const {
   createComplaint,
   listComplaints,
   getComplaintById,
   verifyComplaint,
 } = require("../controllers/complaintController");
+
+const { updateStatus } = require("../controllers/masterIssueController");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -64,6 +66,7 @@ router.use((err, req, res, next) => {
 
 router.get("/", authenticate, listComplaints);
 router.post("/:id/verify", authenticate, verifyComplaint);
+router.patch("/:id/status", authenticate, requireAdmin, updateStatus);
 router.get("/:id", authenticate, getComplaintById);
 
 module.exports = router;

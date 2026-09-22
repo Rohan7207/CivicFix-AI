@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -16,10 +17,43 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/report" element={<ReportIssue />} />
-        <Route path="/my-reports" element={<MyReports />} />
-        <Route path="/admin" element={<Admin />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute requiredRole="CITIZEN">
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/report"
+          element={
+            <ProtectedRoute requiredRole="CITIZEN">
+              <ReportIssue />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/my-reports"
+          element={
+            <ProtectedRoute requiredRole="CITIZEN">
+              <MyReports />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

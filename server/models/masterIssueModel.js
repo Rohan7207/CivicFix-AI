@@ -60,12 +60,44 @@ async function createMasterIssue(
 
 async function findById(id, connection = pool) {
   const [rows] = await connection.execute(
-    `SELECT
-      mi.*, d.name AS department_name,
-      d.code AS department_code
+    `
+    SELECT
+      mi.*,
+
+      d.name AS department_name,
+      d.code AS department_code,
+
+      (
+        SELECT COUNT(*)
+        FROM complaints c_count
+        WHERE c_count.master_issue_id = mi.id
+      ) AS complaint_count,
+
+      rc.address AS complaint_address,
+      rc.latitude AS complaint_latitude,
+      rc.longitude AS complaint_longitude,
+
+      aa.category AS category
+
     FROM master_issues mi
-    LEFT JOIN departments d ON d.id = mi.department_id
-    WHERE mi.id = ?`,
+
+    LEFT JOIN departments d
+      ON d.id = mi.department_id
+
+    LEFT JOIN complaints rc
+      ON rc.id = (
+        SELECT c_latest.id
+        FROM complaints c_latest
+        WHERE c_latest.master_issue_id = mi.id
+        ORDER BY c_latest.created_at DESC, c_latest.id DESC
+        LIMIT 1
+      )
+
+    LEFT JOIN ai_analysis aa
+      ON aa.complaint_id = rc.id
+
+    WHERE mi.id = ?
+    `,
     [id],
   );
 
@@ -107,15 +139,40 @@ async function findAll(
   connection = pool,
 ) {
   let query = `
-    SELECT
-      mi.*,
-      d.name AS department_name,
-      d.code AS department_code,
-      COUNT(c.id) AS complaint_count
-    FROM master_issues mi
-    LEFT JOIN departments d ON d.id = mi.department_id
-    LEFT JOIN complaints c ON c.master_issue_id = mi.id
-  `;
+  SELECT
+    mi.*,
+    d.name AS department_name,
+    d.code AS department_code,
+
+    (
+      SELECT COUNT(*)
+      FROM complaints c_count
+      WHERE c_count.master_issue_id = mi.id
+    ) AS complaint_count,
+
+    rc.address AS complaint_address,
+    rc.latitude AS complaint_latitude,
+    rc.longitude AS complaint_longitude,
+
+    rc_category.category AS category
+
+  FROM master_issues mi
+
+  LEFT JOIN departments d
+    ON d.id = mi.department_id
+
+  LEFT JOIN complaints rc
+    ON rc.id = (
+      SELECT c_latest.id
+      FROM complaints c_latest
+      WHERE c_latest.master_issue_id = mi.id
+      ORDER BY c_latest.created_at DESC, c_latest.id DESC
+      LIMIT 1
+    )
+
+  LEFT JOIN ai_analysis rc_category
+    ON rc_category.complaint_id = rc.id
+`;
 
   const params = [];
   const conditions = [];
@@ -133,7 +190,7 @@ async function findAll(
     query += ` WHERE ${conditions.join(" AND ")}`;
   }
 
-  query += " GROUP BY mi.id ORDER BY mi.created_at DESC LIMIT ? OFFSET ?";
+  query += " ORDER BY mi.created_at DESC LIMIT ? OFFSET ?";
   params.push(Number(limit), Number(offset));
 
   const [rows] = await connection.execute(query, params);
@@ -176,13 +233,11 @@ async function updateById(id, fields, connection = pool) {
   return findById(id, connection);
 }
 
-async function findCandidateMasterIssues({
-  category,
-  latitude,
-  longitude,
-  radiusKm = 2,
-}) {
-  const [rows] = await pool.execute(
+async function findCandidateMasterIssues(
+  { category, latitude, longitude, radiusKm = 2 },
+  db = pool,
+) {
+  const [rows] = await db.execute(
     `
     SELECT DISTINCT
       mi.*,
@@ -190,7 +245,9 @@ async function findCandidateMasterIssues({
       c.longitude AS complaint_longitude,
       aa.short_summary AS ai_summary,
       aa.category AS ai_category,
-      aa.severity AS ai_severity
+      aa.severity AS ai_severity,
+      aa.safety_risk AS ai_safety_risk,
+      aa.confidence AS ai_confidence
     FROM master_issues mi
     JOIN complaints c
       ON c.master_issue_id = mi.id

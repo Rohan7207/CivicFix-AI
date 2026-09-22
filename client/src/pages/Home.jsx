@@ -10,7 +10,6 @@ function Home() {
       <main>
         {/* Hero */}
         <section className="relative flex min-h-[calc(100vh-72px)] items-center overflow-hidden">
-
           {/* Background decorations */}
           <div className="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-blue-300/30 blur-3xl" />
 
@@ -57,13 +56,11 @@ function Home() {
           {/* Main content */}
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
             <div className="mx-auto max-w-5xl text-center">
-
               {/* Brand Badge */}
               <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-5 py-2 text-sm font-bold tracking-wide text-blue-600 shadow-sm backdrop-blur">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white">
                   CF
                 </span>
-
                 CIVICFIX AI
               </div>
 
@@ -77,19 +74,17 @@ function Home() {
 
               {/* Description */}
               <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-                One simple platform for reporting civic problems,
-                understanding issues, and keeping citizens informed.
+                One simple platform for reporting civic problems, understanding
+                issues, and keeping citizens informed.
               </p>
 
               {/* Buttons */}
               <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-
                 <Link
                   to="/signup"
                   className="group inline-flex items-center justify-center rounded-xl bg-slate-950 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/15 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-600"
                 >
                   Report an Issue
-
                   <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
                     →
                   </span>
@@ -101,7 +96,6 @@ function Home() {
                 >
                   Explore Features
                 </a>
-
               </div>
 
               {/* Feature Cards */}
@@ -109,10 +103,8 @@ function Home() {
                 id="features"
                 className="mx-auto mt-14 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3"
               >
-
                 {/* Report */}
                 <div className="group rounded-2xl border border-white/80 bg-white/75 p-6 text-left shadow-lg shadow-blue-900/5 backdrop-blur-md transition duration-300 hover:-translate-y-2 hover:bg-white hover:shadow-xl">
-
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl transition duration-300 group-hover:scale-110">
                     📍
                   </div>
@@ -125,12 +117,10 @@ function Home() {
                     Report civic issues quickly with the information that
                     matters.
                   </p>
-
                 </div>
 
                 {/* Understand */}
                 <div className="group rounded-2xl border border-white/80 bg-white/75 p-6 text-left shadow-lg shadow-blue-900/5 backdrop-blur-md transition duration-300 hover:-translate-y-2 hover:bg-white hover:shadow-xl">
-
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl transition duration-300 group-hover:scale-110">
                     🤖
                   </div>
@@ -142,12 +132,10 @@ function Home() {
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     AI helps understand and analyze the issues you report.
                   </p>
-
                 </div>
 
                 {/* Track */}
                 <div className="group rounded-2xl border border-white/80 bg-white/75 p-6 text-left shadow-lg shadow-blue-900/5 backdrop-blur-md transition duration-300 hover:-translate-y-2 hover:bg-white hover:shadow-xl">
-
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 text-2xl transition duration-300 group-hover:scale-110">
                     🔎
                   </div>
@@ -159,9 +147,7 @@ function Home() {
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     Stay informed and follow the progress of your reports.
                   </p>
-
                 </div>
-
               </div>
 
               {/* Trust line */}
@@ -170,13 +156,10 @@ function Home() {
                 <span>✓ AI-assisted analysis</span>
                 <span>✓ Transparent tracking</span>
               </div>
-
             </div>
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

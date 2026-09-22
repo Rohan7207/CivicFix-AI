@@ -588,10 +588,6 @@ function Admin() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">
-                      {issue.title}
-                    </p>
-
                     <p className="mt-1 text-xs font-medium text-blue-600">
                       {issue.code}
                     </p>
@@ -704,10 +700,6 @@ function Admin() {
                     <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
                       Master Issue
                     </p>
-
-                    <h2 className="mt-1 text-xl font-bold text-slate-900">
-                      {selectedIssue.title}
-                    </h2>
 
                     <p className="mt-1 text-sm font-medium text-blue-600">
                       {selectedIssue.code}
@@ -897,10 +889,6 @@ function Admin() {
                       <option value="IN_PROGRESS">In Progress</option>
 
                       <option value="FIXED">Fixed</option>
-
-                      <option value="CLOSED">Closed</option>
-
-                      <option value="REOPENED">Reopened</option>
                     </select>
 
                     {updatingStatus && (

@@ -110,6 +110,9 @@ function MyReports() {
   const [selectedReportLoading, setSelectedReportLoading] = useState(false);
   const [selectedReportError, setSelectedReportError] = useState("");
 
+  const [verifying, setVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+
   useEffect(() => {
     let ignore = false;
 
@@ -188,6 +191,47 @@ function MyReports() {
     setSelectedReport(null);
     setSelectedReportError("");
     setSelectedReportLoading(false);
+    setVerificationError("");
+  };
+
+  const handleVerifyComplaint = async (resolved) => {
+    if (!selectedReport?.id || verifying) return;
+
+    setVerifying(true);
+    setVerificationError("");
+
+    try {
+      await complaintService.verifyComplaint(selectedReport.id, resolved);
+
+      const result = await complaintService.getComplaintById(selectedReport.id);
+
+      const updatedComplaint = result.complaint || result;
+
+      setSelectedReport((current) => ({
+        ...current,
+        ...updatedComplaint,
+        evidence: result.evidence || current.evidence || [],
+      }));
+
+      setReports((currentReports) =>
+        currentReports.map((report) =>
+          report.id === selectedReport.id
+            ? {
+                ...report,
+                status: resolved ? "CLOSED" : "REOPENED",
+              }
+            : report,
+        ),
+      );
+    } catch (error) {
+      console.error("Unable to verify complaint:", error);
+
+      setVerificationError(
+        error?.message || "Unable to verify this complaint. Please try again.",
+      );
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const normalizedReports = reports.map((report) => ({
@@ -516,6 +560,49 @@ function MyReports() {
                         {getStatusMessage(selectedReport.status)}
                       </p>
                     </div>
+
+                    {/* VERIFY FIX */}
+                    {String(selectedReport.status || "").toUpperCase() ===
+                      "FIXED" && (
+                      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <p className="text-sm font-semibold text-slate-900">
+                          Has this issue actually been fixed?
+                        </p>
+
+                        <p className="mt-1 text-sm leading-5 text-slate-600">
+                          Please check the reported location and verify whether
+                          the issue has been resolved.
+                        </p>
+
+                        {verificationError && (
+                          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                            <p className="text-sm text-red-700">
+                              {verificationError}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            disabled={verifying}
+                            onClick={() => handleVerifyComplaint(true)}
+                            className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {verifying ? "Verifying..." : "Yes, it's fixed"}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={verifying}
+                            onClick={() => handleVerifyComplaint(false)}
+                            className="rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            No, still an issue
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* REPORT INFORMATION */}

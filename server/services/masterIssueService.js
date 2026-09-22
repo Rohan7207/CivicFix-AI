@@ -31,12 +31,7 @@ const DEPARTMENT_CODE_MAP = {
   "Public Safety": "SAFETY",
 };
 
-const ALLOWED_MASTER_ISSUE_STATUSES = [
-  "REPORTED",
-  "IN_PROGRESS",
-  "FIXED",
-  "REOPENED",
-];
+const ALLOWED_MASTER_ISSUE_STATUSES = ["REPORTED", "IN_PROGRESS", "FIXED"];
 
 const allowedTransitions = {
   REPORTED: ["IN_PROGRESS"],

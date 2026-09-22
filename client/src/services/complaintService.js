@@ -33,6 +33,22 @@ export const complaintService = {
     return response.data || {};
   },
 
+  async verifyComplaint(id, resolved) {
+    const response = await api.post(`/api/complaints/${id}/verify`, {
+      resolved,
+    });
+
+    if (!response.success) {
+      throw new Error(
+        response.error?.message ||
+          response.message ||
+          "Unable to verify complaint.",
+      );
+    }
+
+    return response.data || {};
+  },
+
   async updateComplaintStatus(id, status) {
     const response = await api.patch(`/api/complaints/${id}/status`, {
       status,

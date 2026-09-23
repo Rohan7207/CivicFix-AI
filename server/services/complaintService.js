@@ -432,6 +432,27 @@ async function verifyComplaint({ complaintId, citizenId, resolved }) {
     [verificationStatus, verificationStatus, complaintId],
   );
 
+  if (resolved && complaint.master_issue_id) {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS active_count
+     FROM complaints
+     WHERE master_issue_id = ?
+       AND status != 'CLOSED'`,
+      [complaint.master_issue_id],
+    );
+
+    const activeCount = Number(rows[0]?.active_count || 0);
+
+    if (activeCount === 0) {
+      await pool.execute(
+        `UPDATE master_issues
+       SET status = 'CLOSED'
+       WHERE id = ?`,
+        [complaint.master_issue_id],
+      );
+    }
+  }
+
   return {
     complaintId,
     verificationStatus,

@@ -111,8 +111,6 @@
     }
     log("ME (after logout) status", { status: res.status });
     log("ME (after logout) body", json);
-
-    console.log("Integration script finished.");
   } catch (err) {
     console.error("Error during integration test", err);
     process.exitCode = 1;

@@ -37,5 +37,4 @@ function listRoutes(app) {
 }
 
 const routes = listRoutes(app);
-console.log("Discovered routes:");
 routes.forEach((r) => console.log(JSON.stringify(r)));

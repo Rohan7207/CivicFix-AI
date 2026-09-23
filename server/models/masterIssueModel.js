@@ -134,6 +134,21 @@ async function countComplaintsByMasterIssueId(
   return Number(rows[0]?.complaint_count || 0);
 }
 
+async function countActiveComplaintsByMasterIssueId(
+  masterIssueId,
+  connection = pool,
+) {
+  const [rows] = await connection.execute(
+    `SELECT COUNT(*) AS active_count
+     FROM complaints
+     WHERE master_issue_id = ?
+       AND status != 'CLOSED'`,
+    [masterIssueId],
+  );
+
+  return Number(rows[0]?.active_count || 0);
+}
+
 async function findAll(
   { department_id = null, limit = 20, offset = 0 } = {},
   connection = pool,
@@ -149,6 +164,13 @@ async function findAll(
       FROM complaints c_count
       WHERE c_count.master_issue_id = mi.id
     ) AS complaint_count,
+
+    (
+  SELECT COUNT(*)
+  FROM complaints c_active
+  WHERE c_active.master_issue_id = mi.id
+    AND c_active.status != 'CLOSED'
+) AS active_complaint_count,
 
     rc.address AS complaint_address,
     rc.latitude AS complaint_latitude,
@@ -327,6 +349,7 @@ module.exports = {
   findByCode,
   findDepartmentById,
   countComplaintsByMasterIssueId,
+  countActiveComplaintsByMasterIssueId,
   findAll,
   findComplaintsForMasterIssue,
   updateById,

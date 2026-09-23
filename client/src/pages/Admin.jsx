@@ -166,6 +166,8 @@ function Admin() {
         issue.complaint_count ?? issue.similar_complaint_count ?? 0,
       ),
 
+      activeComplaintCount: Number(issue.active_complaint_count ?? 0),
+
       priority: issue.priority_level || "Not available",
 
       status: String(issue.status || "REPORTED").toUpperCase(),
@@ -826,12 +828,20 @@ function Admin() {
                       Master Issue Information
                     </h3>
 
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-4">
                       <div className="rounded-xl border border-slate-200 p-4">
-                        <p className="text-xs text-slate-400">Reports</p>
+                        <p className="text-xs text-slate-400">Total Reports</p>
 
                         <p className="mt-1 text-xl font-bold text-slate-900">
                           {selectedIssue.reportCount}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-200 p-4">
+                        <p className="text-xs text-slate-400">Active Reports</p>
+
+                        <p className="mt-1 text-xl font-bold text-slate-900">
+                          {selectedIssue.activeComplaintCount ?? 0}
                         </p>
                       </div>
 

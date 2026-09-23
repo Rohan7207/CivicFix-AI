@@ -8,12 +8,6 @@ const imageUrl =
 async function test() {
   try {
     const result = await analyzeImage(imageUrl);
-
-    console.log("\n================================");
-    console.log("       CIVICFIX IMAGE AI");
-    console.log("================================\n");
-
-    console.log(JSON.stringify(result, null, 2));
   } catch (error) {
     console.error("\nIMAGE AI ERROR:");
     console.error(error.message);

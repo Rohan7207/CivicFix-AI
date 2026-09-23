@@ -438,6 +438,10 @@ async function attachOrCreateMasterIssue({
 
     if (fusionResult && fusionResult.isSameIssue === true) {
       await updateComplaintMasterIssue(complaintId, candidate.id, db);
+      // A new complaint means the issue is active again.
+      if (["FIXED", "CLOSED"].includes(candidate.status)) {
+        await updateStatus(candidate.id, "REPORTED", db);
+      }
       const updatedMasterIssue = await updateById(
         candidate.id,
         {

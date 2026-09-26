@@ -81,7 +81,7 @@ function getDepartmentCode(department, category) {
   }
   if (issueCategory.includes("light")) return "LIGHTING";
   if (issueCategory.includes("water")) return "WATER";
-  if (issueCategory.includes("sanitation") || issueCategory.includes("waste")) {
+  if (issueCategory.includes("sanitation") || issueCategory.includes("waste") ||  issueCategory.includes("garbage")) {
     return "SANITATION";
   }
   if (issueCategory.includes("safety")) return "SAFETY";
